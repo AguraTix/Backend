@@ -24,7 +24,7 @@ const swaggerOptions = {
     info: {
       title: 'AGURA Ticketing App API',
       version: '1.0.0',
-      description: 'API for AGURA Ticketing App with MVC and Service layers',
+      description: 'API for AGURA Ticketing App',
     },
     servers: [{ url: 'http://localhost:3000' }],
     components: {
@@ -36,6 +36,11 @@ const swaggerOptions = {
         },
       },
     },
+    security: [
+      {
+        bearerAuth: []
+      }
+    ],
   },
   apis: ['./routes/*.js'],
 };

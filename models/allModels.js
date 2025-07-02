@@ -9,7 +9,11 @@ module.exports = (sequelize) => {
         phone_number: { type: DataTypes.STRING },
         name: { type: DataTypes.STRING, allowNull: false },
         profile_photo: { type: DataTypes.STRING },
-        role: { type: DataTypes.ENUM('Attendee', 'Admin'), defaultValue: 'Attendee' },
+        role: {type: DataTypes.STRING,defaultValue: 'Attendee',allowNull: false,
+             validate: {
+             isIn: [['Attendee', 'Admin']]
+            }
+        },
         password: { type: DataTypes.STRING, allowNull: false },
         preferences: { type: DataTypes.JSON },
 

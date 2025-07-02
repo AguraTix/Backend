@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
 //Register a new user
-exports.register = async({email,password,name,phone_number,role})=>{
+exports.register = async({email,password,name,phone_number})=>{
 
     const existingUser = await User.findOne({where: { email }})
 
@@ -18,7 +18,7 @@ exports.register = async({email,password,name,phone_number,role})=>{
         password:hashedPassword,
         name,
         phone_number,
-        role:role || 'Attendee',
+        role:'Attendee',
     });
 
     return {message: 'User registered successfully', user_id: user.user_id};
@@ -47,3 +47,11 @@ exports.login = async({email,password})=> {
             role: user.role,
     },};
 }
+
+exports.updateUserRole = async (userId, role) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error('User not found');
+  user.role = role;
+  await user.save();
+  return user;
+};

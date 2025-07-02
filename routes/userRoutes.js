@@ -7,6 +7,7 @@
 const express = require('express');
 const userController = require('../controllers/userController');
 const router = express.Router();
+const isAdmin = require('../middleware/isAdmin');
 
 /**
  * @swagger
@@ -52,5 +53,43 @@ router.post('/register', userController.register);
  *       401: { description: Invalid credentials }
  */
 router.post('/login', userController.login);
+
+/**
+ * @swagger
+ * /api/users/{id}/role:
+ *   put:
+ *     summary: Update a user's role
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [Admin, Attendee]
+ *                 example: Admin
+ *     responses:
+ *       200:
+ *         description: User role updated
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: User not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (Admins only)
+ */
+router.put('/:id/role', isAdmin, userController.updateUserRole);
 
 module.exports = router;
