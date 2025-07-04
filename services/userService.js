@@ -18,7 +18,7 @@ exports.register = async({email,password,name,phone_number})=>{
         password:hashedPassword,
         name,
         phone_number,
-        role:'Attendee',
+        role:'Attendee'
     });
 
     return {message: 'User registered successfully', user_id: user.user_id};
