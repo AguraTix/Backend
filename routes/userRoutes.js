@@ -26,7 +26,7 @@ const isAdmin = require('../middleware/isAdmin');
  *               password: { type: string }
  *               name: { type: string }
  *               phone_number: { type: string }
- *               role: { type: string, enum: ['Attendee', 'Admin'] }
+ *             
  *     responses:
  *       201: { description: User created }
  *       400: { description: Bad request }

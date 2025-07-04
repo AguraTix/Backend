@@ -1,9 +1,21 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const validator = require('validator');
 
 //Register a new user
 exports.register = async({email,password,name,phone_number})=>{
+    if (!validator.isEmail(email)) {
+        throw new Error('Invalid email format');
+    }
+    
+    if (!password || password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+    }
+
+    if (!phone_number || !validator.isMobilePhone(phone_number + '')) {
+        throw new Error('Invalid phone number format');
+    }
 
     const existingUser = await User.findOne({where: { email }})
 
