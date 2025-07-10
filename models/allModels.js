@@ -24,52 +24,35 @@ module.exports = (sequelize) => {
     event_id: { type: DataTypes.UUID,defaultValue: DataTypes.UUIDV4,primaryKey: true },
     title: { type: DataTypes.STRING, allowNull: false },
     description: { type: DataTypes.TEXT },
-    date_time: { type: DataTypes.DATE, allowNull: false },
-    category: { type: DataTypes.STRING },
+    date: { type: DataTypes.DATE, allowNull: false },
+    venue_id: { type: DataTypes.UUID, allowNull: false },
+    admin_id: { type: DataTypes.UUID, allowNull: false },
     artist_lineup: { type: DataTypes.JSON },
-    promo_video_url: { type: DataTypes.STRING },
 
     }, { tableName: 'events' });
 
     //Venue model
     const Venue = sequelize.define('Venue', {
     venue_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    admin_id: { type: DataTypes.UUID, allowNull: false },
     name: { type: DataTypes.STRING, allowNull: false },
-    address: { type: DataTypes.STRING, allowNull: false },
+    location: { type: DataTypes.STRING, allowNull: false },
     map_data: { type: DataTypes.JSON },
     capacity: { type: DataTypes.INTEGER, allowNull: false },
 
     }, { tableName: 'venues' });
-
-    // Ticket model
-    const Ticket = sequelize.define('Ticket', {
-    ticket_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    ticket_type: { type: DataTypes.ENUM('Regular', 'VIP', 'VVIP'), allowNull: false },
-    quantity: { type: DataTypes.INTEGER, allowNull: false },
-    seat_info: { type: DataTypes.JSON },
-    qr_code: { type: DataTypes.STRING },
-    purchase_date: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-    status: { type: DataTypes.ENUM('Active', 'Used', 'Refunded'), defaultValue: 'Active' },
-
-    }, { tableName: 'tickets' });
-
 
 
   //Relationships
   User.hasMany(Event, { foreignKey: 'admin_id' });
   Event.belongsTo(User, { foreignKey: 'admin_id' });
 
-  User.hasMany(Ticket, { foreignKey: 'attendee_id' });
-  Ticket.belongsTo(User, { foreignKey: 'attendee_id' });
-
-  User.hasMany(Ticket, { foreignKey: 'admin_id' });
-  Ticket.belongsTo(User, { foreignKey: 'admin_id' });
-
-  Event.hasMany(Ticket, { foreignKey: 'event_id' });
-  Ticket.belongsTo(Event, { foreignKey: 'event_id' });
+  User.hasMany(Venue, { foreignKey: 'admin_id' });
+  Venue.belongsTo(User, { foreignKey: 'admin_id' });
 
   Venue.hasMany(Event, { foreignKey: 'venue_id' });
   Event.belongsTo(Venue, { foreignKey: 'venue_id' });
 
-    return {User,Venue,Event,Ticket};
+
+    return {User,Venue,Event};
 }

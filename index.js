@@ -4,9 +4,10 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');  
 const session = require('express-session');
 const userRoutes = require('./routes/userRoutes');
-const authRoutes = require('./routes/googleRoutes');
+const venueRoutes = require('./routes/venueRoutes');
+const eventRoutes = require('./routes/eventRoutes');
 const passport = require('./middleware/passport');
-const { sequelize } = require('./models');
+const sequelize = require('./models');
 
 require('dotenv').config();
 
@@ -23,14 +24,6 @@ app.use(session({
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
-
-sequelize.authenticate()
-   .then(()=>console.log('Database connected successfully'))
-   .catch(err => console.log('Database connection failed',err));
-
-sequelize.sync()
-  .then(() => console.log('All models were synchronized successfully.'))
-  .catch(err => console.error('Failed to sync models:', err));
 
 const swaggerOptions = {
   definition: {
@@ -62,7 +55,8 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.use('/api/users',userRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/venues', venueRoutes);
+app.use('/api/events', eventRoutes);
 
 app.use((err,req,res, next)=>{
     console.error('Error:', err.stack);
