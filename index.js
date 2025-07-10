@@ -6,6 +6,10 @@ const session = require('express-session');
 const userRoutes = require('./routes/userRoutes');
 const venueRoutes = require('./routes/venueRoutes');
 const eventRoutes = require('./routes/eventRoutes');
+const sectionRoutes = require('./routes/sectionRoutes');
+const seatRoutes = require('./routes/seatRoutes');
+const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
+const ticketRoutes = require('./routes/ticketRoutes');
 const passport = require('./middleware/passport');
 const sequelize = require('./models');
 
@@ -57,6 +61,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/api/users',userRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/sections', sectionRoutes);
+app.use('/api/sections', seatRoutes);
+app.use('/api/ticket-categories', ticketCategoryRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 app.use((err,req,res, next)=>{
     console.error('Error:', err.stack);
