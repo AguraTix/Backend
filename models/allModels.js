@@ -87,35 +87,39 @@ module.exports = (sequelize) => {
 
   //Relationships
   User.hasMany(Event, { foreignKey: 'admin_id' });
-  Event.belongsTo(User, { foreignKey: 'admin_id' });
+  Event.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
 
   User.hasMany(Venue, { foreignKey: 'admin_id' });
-  Venue.belongsTo(User, { foreignKey: 'admin_id' });
+  Venue.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
+
+  // Event-Venue relationship
+  Venue.hasMany(Event, { foreignKey: 'venue_id' });
+  Event.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
 
   // New relationships
   Venue.hasMany(Section, { foreignKey: 'venue_id' });
-  Section.belongsTo(Venue, { foreignKey: 'venue_id' });
+  Section.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
 
   Section.hasMany(Section, { foreignKey: 'parent_section_id', as: 'SubSections' });
   Section.belongsTo(Section, { foreignKey: 'parent_section_id', as: 'ParentSection' });
 
   Section.hasMany(Seat, { foreignKey: 'section_id' });
-  Seat.belongsTo(Section, { foreignKey: 'section_id' });
+  Seat.belongsTo(Section, { foreignKey: 'section_id', as: 'Section' });
 
   Event.hasMany(TicketCategory, { foreignKey: 'event_id' });
-  TicketCategory.belongsTo(Event, { foreignKey: 'event_id' });
+  TicketCategory.belongsTo(Event, { foreignKey: 'event_id', as: 'Event' });
 
   Section.hasMany(TicketCategory, { foreignKey: 'section_id' });
-  TicketCategory.belongsTo(Section, { foreignKey: 'section_id' });
+  TicketCategory.belongsTo(Section, { foreignKey: 'section_id', as: 'Section' });
 
   TicketCategory.hasMany(Ticket, { foreignKey: 'category_id' });
-  Ticket.belongsTo(TicketCategory, { foreignKey: 'category_id' });
+  Ticket.belongsTo(TicketCategory, { foreignKey: 'category_id', as: 'TicketCategory' });
 
   User.hasMany(Ticket, { foreignKey: 'attendee_id' });
-  Ticket.belongsTo(User, { foreignKey: 'attendee_id' });
+  Ticket.belongsTo(User, { foreignKey: 'attendee_id', as: 'User' });
 
   Seat.hasMany(Ticket, { foreignKey: 'seat_id' });
-  Ticket.belongsTo(Seat, { foreignKey: 'seat_id' });
+  Ticket.belongsTo(Seat, { foreignKey: 'seat_id', as: 'Seat' });
 
   return {
     User,

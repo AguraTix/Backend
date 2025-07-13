@@ -10,13 +10,10 @@ const generateQRCode = () => {
 exports.purchaseTickets = async (purchaseData, attendeeId) => {
     const { categoryId, seatIds } = purchaseData;
 
-    // Check if user is an attendee (not admin)
+    // Remove attendee-only restriction: allow any user (admin or attendee) to purchase
     const user = await User.findByPk(attendeeId);
     if (!user) {
         throw new Error('User not found');
-    }
-    if (user.role !== 'Attendee') {
-        throw new Error('Only attendees can purchase tickets. Admins cannot purchase tickets.');
     }
 
     // Check if category exists

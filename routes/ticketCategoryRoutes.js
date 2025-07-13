@@ -129,4 +129,23 @@ router.put('/:categoryId', isAdmin, ticketCategoryController.updateTicketCategor
  */
 router.delete('/:categoryId', isAdmin, ticketCategoryController.deleteTicketCategory);
 
+/**
+ * @swagger
+ * /api/ticket-categories/{categoryId}/available-seats:
+ *   get:
+ *     summary: Get available seats for a ticket category
+ *     tags: [TicketCategories]
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ticket category ID
+ *     responses:
+ *       200: { description: Available seats for the category }
+ *       404: { description: Ticket category not found }
+ */
+router.get('/:categoryId/available-seats', require('../controllers/ticketController').getAvailableSeatsForCategory);
+
 module.exports = router; 
