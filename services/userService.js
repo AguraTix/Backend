@@ -5,35 +5,55 @@ const validator = require('validator');
 
 //Register a new user
 exports.register = async({email,password,name,phone_number})=>{
+    // Email validation
     if (!validator.isEmail(email)) {
-        throw new Error('Invalid email format');
-    }
-    
-    if (!password || password.length < 6) {
-        throw new Error('Password must be at least 6 characters');
+        throw new Error('Please enter a valid email address.');
     }
 
-    if (!phone_number || !validator.isMobilePhone(phone_number + '')) {
-        throw new Error('Invalid phone number format');
+    // Password validation
+    if (!password || password.length < 8) {
+        throw new Error('Password must be at least 8 characters long.');
+    }
+    if (!/(?=.*[A-Za-z])/.test(password)) {
+        throw new Error('Password must contain at least one letter.');
+    }
+    if (!/(?=.*\d)/.test(password)) {
+        throw new Error('Password must contain at least one number.');
+    }
+    if (!/(?=.*[@$!%*#?&])/.test(password)) {
+        throw new Error('Password must contain at least one special character.');
+    }
+
+    // Phone number validation
+    if (!phone_number || !/^[0-9+\-() ]{10,20}$/.test(phone_number)) {
+        throw new Error('Please enter a valid phone number');
     }
 
     const existingUser = await User.findOne({where: { email }})
-
     if(existingUser) {
         throw new Error('Email already exists')
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
-        email,
-        password:hashedPassword,
-        name,
-        phone_number,
-        role:'Attendee'
-    });
-
-    return {message: 'User registered successfully', user_id: user.user_id};
+    try {
+        const user = await User.create({
+            email,
+            password:hashedPassword,
+            name,
+            phone_number,
+            role:'Attendee'
+        });
+        return {message: 'User registered successfully', user_id: user.user_id};
+    } catch (error) {
+        // Sequelize validation errors
+        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+            // Collect all error messages
+            const messages = error.errors.map(e => e.message);
+            throw new Error(messages.join('; '));
+        }
+        throw error;
+    }
 }
 
 exports.login = async({email,password})=> {

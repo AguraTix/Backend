@@ -6,7 +6,9 @@ module.exports = (sequelize) => {
     const User = sequelize.define('User',{
         user_id:{type:DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey :true},
         email:{type:DataTypes.STRING, allowNull:false, unique:true},
-        phone_number: { type: DataTypes.STRING },
+        phone_number: { 
+            type: DataTypes.STRING
+        },
         name: { type: DataTypes.STRING, allowNull: false },
         profile_photo: { type: DataTypes.STRING },
         role: {type: DataTypes.STRING,defaultValue: 'Attendee',allowNull: false,
@@ -14,7 +16,10 @@ module.exports = (sequelize) => {
              isIn: [['Attendee', 'Admin']]
             }
         },
-        password: { type: DataTypes.STRING, allowNull: false },
+        password: { 
+            type: DataTypes.STRING, 
+            allowNull: false
+        },
         preferences: { type: DataTypes.JSON },
 
     },{ tableName: 'users' });
