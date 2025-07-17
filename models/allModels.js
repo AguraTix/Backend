@@ -129,7 +129,7 @@ module.exports = (sequelize) => {
         Event,
         Venue
     };
-}
+
 
 
   // New relationships
@@ -168,4 +168,4 @@ module.exports = (sequelize) => {
     Ticket
   };
 
-
+};

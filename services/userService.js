@@ -28,9 +28,6 @@ exports.register = async({email,password,name,phone_number})=>{
         throw new Error('Password must contain at least one number.');
     }
 
-    if (!/(?=.*[@$!%*#?&])/.test(password)) {
-        throw new Error('Password must contain at least one special character.');
-    }
 
     // Phone number validation
     if (!phone_number || !/^[0-9+\-() ]{10,20}$/.test(phone_number)) {
@@ -64,29 +61,38 @@ exports.register = async({email,password,name,phone_number})=>{
     }
 }
 
-exports.login = async({email,password})=> {
-    const user = await User.findOne({where : { email } });
+exports.login = async({ identifier, password }) => {
+    // Check if identifier is email or phone number
+    const isEmail = validator.isEmail(identifier);
 
-    if(!user){
-        throw new Error('Invalid email. Please check and try again');
-
+    let user;
+    if (isEmail) {
+        user = await User.findOne({ where: { email: identifier } });
+    } else {
+        user = await User.findOne({ where: { phone_number: identifier } });
     }
 
-    const isValidPassword = await bcrypt.compare(password,user.password);
-    if(!isValidPassword){
-        throw new Error('Incorrect password.Please try again')
-
+    if (!user) {
+        throw new Error('Invalid phone number or email. Please check and try again');
     }
-   const token = jwt.sign({user_id: user.user_id, role:user.role},process.env.JWT_SECRET,{expiresIn: '1h'});
-    return { message:'Login successful',
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+        throw new Error('Incorrect password. Please try again');
+    }
+
+    const token = jwt.sign({ user_id: user.user_id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    return {
+        message: 'Login successful',
         token,
         user: {
             user_id: user.user_id,
             email: user.email,
             name: user.name,
             role: user.role,
-    },};
-}
+        },
+    };
+};
 
 exports.updateUserRole = async (userId, role) => {
   const user = await User.findByPk(userId);
