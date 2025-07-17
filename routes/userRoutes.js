@@ -37,7 +37,7 @@ router.post('/register', userController.register);
  * @swagger
  * /api/users/login:
  *   post:
- *     summary: User Login
+ *     summary: User Login (Phone Number or Email)
  *     tags: [Users]
  *     requestBody:
  *       required: true
@@ -46,10 +46,27 @@ router.post('/register', userController.register);
  *           schema:
  *             type: object
  *             properties:
- *               email: { type: string }
+ *               identifier: 
+ *                 type: string
+ *                 description: Phone number or email address
  *               password: { type: string }
  *     responses:
- *       200: { description: Login successful }
+ *       200: 
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 token: { type: string }
+ *                 user: 
+ *                   type: object
+ *                   properties:
+ *                     user_id: { type: string }
+ *                     email: { type: string }
+ *                     name: { type: string }
+ *                     role: { type: string }
  *       401: { description: Invalid credentials }
  */
 router.post('/login', userController.login);

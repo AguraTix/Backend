@@ -10,6 +10,13 @@ exports.register = async({email,password,name,phone_number})=>{
         throw new Error('Please enter a valid email address.');
     }
 
+
+    //Name validation
+    if (!/(?=.*[A-Za-z/s])/.test(name)) {
+        throw new Error('Please enter a valid name');
+    }
+
+
     // Password validation
     if (!password || password.length < 8) {
         throw new Error('Password must be at least 8 characters long.');
@@ -20,6 +27,7 @@ exports.register = async({email,password,name,phone_number})=>{
     if (!/(?=.*\d)/.test(password)) {
         throw new Error('Password must contain at least one number.');
     }
+
     if (!/(?=.*[@$!%*#?&])/.test(password)) {
         throw new Error('Password must contain at least one special character.');
     }
@@ -69,7 +77,7 @@ exports.login = async({email,password})=> {
         throw new Error('Incorrect password.Please try again')
 
     }
-    const token = jwt.sign({user_id: user.user_id, role:user.role},process.env.JWT_SECRET,{expiresIn: '1h'});
+   const token = jwt.sign({user_id: user.user_id, role:user.role},process.env.JWT_SECRET,{expiresIn: '1h'});
     return { message:'Login successful',
         token,
         user: {

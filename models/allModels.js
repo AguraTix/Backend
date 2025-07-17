@@ -6,9 +6,13 @@ module.exports = (sequelize) => {
     const User = sequelize.define('User',{
         user_id:{type:DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey :true},
         email:{type:DataTypes.STRING, allowNull:false, unique:true},
+
         phone_number: { 
             type: DataTypes.STRING
         },
+
+        phone_number: { type: DataTypes.STRING, unique: true },
+
         name: { type: DataTypes.STRING, allowNull: false },
         profile_photo: { type: DataTypes.STRING },
         role: {type: DataTypes.STRING,defaultValue: 'Attendee',allowNull: false,
@@ -21,6 +25,14 @@ module.exports = (sequelize) => {
             allowNull: false
         },
         preferences: { type: DataTypes.JSON },
+        verificationCode: { 
+            type: DataTypes.STRING, 
+            allowNull: true 
+        },
+        codeExpiresAt: { 
+            type: DataTypes.DATE, 
+            allowNull: true 
+        }
 
     },{ tableName: 'users' });
 
@@ -46,6 +58,7 @@ module.exports = (sequelize) => {
     capacity: { type: DataTypes.INTEGER, allowNull: false },
 
     }, { tableName: 'venues' });
+
 
     //Section model
     const Section = sequelize.define('Section', {
@@ -101,9 +114,28 @@ module.exports = (sequelize) => {
   Venue.hasMany(Event, { foreignKey: 'venue_id' });
   Event.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
 
+    //Relationships
+    User.hasMany(Event, { foreignKey: 'admin_id' });
+    Event.belongsTo(User, { foreignKey: 'admin_id' });
+
+    User.hasMany(Venue, { foreignKey: 'admin_id' });
+    Venue.belongsTo(User, { foreignKey: 'admin_id' });
+
+    Venue.hasMany(Event, { foreignKey: 'venue_id' });
+    Event.belongsTo(Venue, { foreignKey: 'venue_id' });
+
+    return {
+        User,
+        Event,
+        Venue
+    };
+}
+
+
   // New relationships
   Venue.hasMany(Section, { foreignKey: 'venue_id' });
   Section.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
+
 
   Section.hasMany(Section, { foreignKey: 'parent_section_id', as: 'SubSections' });
   Section.belongsTo(Section, { foreignKey: 'parent_section_id', as: 'ParentSection' });
@@ -135,4 +167,5 @@ module.exports = (sequelize) => {
     TicketCategory,
     Ticket
   };
-};
+
+
