@@ -72,7 +72,7 @@ exports.login = async({email,password})=> {
         throw new Error('Incorrect password.Please try again')
 
     }
-    const token = jwt.sign({user_id: user.user_id, role:user.role},process.env.JWT_SECRET,{expiresIn: '1h'});
+   const token = jwt.sign({user_id: user.user_id, role:user.role},process.env.JWT_SECRET,{expiresIn: '1h'});
     return { message:'Login successful',
         token,
         user: {
