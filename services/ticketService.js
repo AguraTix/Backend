@@ -67,19 +67,23 @@ exports.getUserTickets = async (attendeeId) => {
         include: [
             {
                 model: TicketCategory,
+                as:'TicketCategory',
                 include: [
                     {
                         model: Event,
+                        as: 'Event',
                         attributes: ['event_id', 'title', 'date', 'description']
                     },
                     {
                         model: Section,
+                        as: 'Section',
                         attributes: ['section_id', 'name']
                     }
                 ]
             },
             {
                 model: Seat,
+                as: 'Seat',
                 attributes: ['seat_id', 'number']
             }
         ],
@@ -98,19 +102,23 @@ exports.getTicketById = async (ticketId, attendeeId) => {
         include: [
             {
                 model: TicketCategory,
+                as: 'TicketCategory',
                 include: [
                     {
                         model: Event,
+                        as: 'Event',
                         attributes: ['event_id', 'title', 'date', 'description']
                     },
                     {
                         model: Section,
+                        as: 'Section',
                         attributes: ['section_id', 'name']
                     }
                 ]
             },
             {
                 model: Seat,
+                as: 'Seat',
                 attributes: ['seat_id', 'number']
             }
         ]
@@ -133,12 +141,14 @@ exports.validateTicket = async (qrCode) => {
                 include: [
                     {
                         model: Event,
+                        as:'Event',
                         attributes: ['event_id', 'title', 'date']
                     }
                 ]
             },
             {
                 model: User,
+                as: 'User',
                 attributes: ['user_id', 'name', 'email']
             }
         ]

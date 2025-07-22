@@ -103,18 +103,15 @@ module.exports = (sequelize) => {
         }
     }, { tableName: 'tickets' });
 
-  //Relationships
   User.hasMany(Event, { foreignKey: 'admin_id' });
   Event.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
 
   User.hasMany(Venue, { foreignKey: 'admin_id' });
   Venue.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
 
-  // Event-Venue relationship
   Venue.hasMany(Event, { foreignKey: 'venue_id' });
   Event.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
 
-    //Relationships
     User.hasMany(Event, { foreignKey: 'admin_id' });
     Event.belongsTo(User, { foreignKey: 'admin_id' });
 
@@ -124,15 +121,6 @@ module.exports = (sequelize) => {
     Venue.hasMany(Event, { foreignKey: 'venue_id' });
     Event.belongsTo(Venue, { foreignKey: 'venue_id' });
 
-    return {
-        User,
-        Event,
-        Venue
-    };
-
-
-
-  // New relationships
   Venue.hasMany(Section, { foreignKey: 'venue_id' });
   Section.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
 
