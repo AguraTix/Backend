@@ -6,8 +6,18 @@ const session = require('express-session');
 const userRoutes = require('./routes/userRoutes');
 const venueRoutes = require('./routes/venueRoutes');
 const eventRoutes = require('./routes/eventRoutes');
+const sectionRoutes = require('./routes/sectionRoutes');
+const seatRoutes = require('./routes/seatRoutes');
+const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
+const ticketRoutes = require('./routes/ticketRoutes');
+
+const passwordResetRoutes = require('./routes/passwordResetRoutes');
+const googleRoutes = require('./routes/googleRoutes');
+
+
+
 const passport = require('./middleware/passport');
-const sequelize = require('./models');
+const { sequelize } = require('./models');
 
 require('dotenv').config();
 
@@ -57,6 +67,18 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/api/users',userRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/sections', sectionRoutes);
+app.use('/api/sections', seatRoutes);
+app.use('/api/ticket-categories', ticketCategoryRoutes);
+app.use('/api/tickets', ticketRoutes);
+
+app.use('/api/sections', sectionRoutes);
+app.use('/api/seats', seatRoutes);
+app.use('/api/ticket-categories', ticketCategoryRoutes);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/password-reset', passwordResetRoutes);
+app.use('/api/auth', googleRoutes);
+
 
 app.use((err,req,res, next)=>{
     console.error('Error:', err.stack);
@@ -64,4 +86,5 @@ app.use((err,req,res, next)=>{
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT,()=>console.log(`Server running on port ${PORT}`));
