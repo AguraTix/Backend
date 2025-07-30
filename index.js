@@ -10,6 +10,7 @@ const sectionRoutes = require('./routes/sectionRoutes');
 const seatRoutes = require('./routes/seatRoutes');
 const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
+const cors = require('cors');
 
 const passwordResetRoutes = require('./routes/passwordResetRoutes');
 const googleRoutes = require('./routes/googleRoutes');
@@ -23,6 +24,7 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 // Session configuration for Passport
 app.use(session({ 
