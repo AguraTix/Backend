@@ -32,6 +32,29 @@ const isAdmin = require('../middleware/isAdmin');
  *       400: { description: Bad request }
  */
 router.post('/register', userController.register);
+/**
+ * @swagger
+ * /api/users/registerAdmin:
+ *   post:
+ *     summary: Register a new user as an Admin(for web app)
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string }
+ *               password: { type: string }
+ *               name: { type: string }
+ *               phone_number: { type: string }
+ *             
+ *     responses:
+ *       201: { description: User created }
+ *       400: { description: Bad request }
+ */
+router.post('/registerAdmin', userController.registerAdmin);
 
 /**
  * @swagger

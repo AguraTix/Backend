@@ -9,6 +9,15 @@ exports.register = async(req,res) =>{
         res.status(400).json({error:error.message});
     }
 };
+exports.registerAdmin = async(req,res) =>{
+    try{
+        const{email,password,phone_number,name} =req.body;
+        const result = await userService.registerAdmin({email,password,name,phone_number});
+        res.status(201).json({message:'User created successful',user_id:result.user_id});
+    }catch(error){
+        res.status(400).json({error:error.message});
+    }
+};
 
 exports.login = async (req, res) => {
   try {
