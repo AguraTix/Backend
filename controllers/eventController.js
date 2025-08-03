@@ -1,17 +1,34 @@
 const eventService = require('../services/eventService');
+const path = require('path');
 
 // Create a new event
 exports.createEvent = async (req, res) => {
     try {
-        const { title, description, date, venue_id, artist_lineup } = req.body;
-        const adminId = req.user.user_id; 
+        const { title, description, date, venue_id, artist_lineup, image_url } = req.body;
+        const adminId = req.user.user_id;
+
+        // Handle image - either from file upload or URL
+        let finalImageUrl = image_url;
+        
+        // If a file was uploaded, use the file path instead of URL
+        if (req.file) {
+            finalImageUrl = `/uploads/events/${req.file.filename}`;
+        }
+
+        // Validate image_url if provided and no file uploaded
+        if (!req.file && image_url && typeof image_url !== 'string') {
+            return res.status(400).json({
+                error: 'image_url must be a string if provided'
+            });
+        } 
 
         const event = await eventService.createEvent({
             title,
             description,
             date,
             venue_id,
-            artist_lineup
+            artist_lineup,
+            image_url: finalImageUrl
         }, adminId);
 
         res.status(201).json({
@@ -63,6 +80,18 @@ exports.updateEvent = async (req, res) => {
         const { eventId } = req.params;
         const updateData = req.body;
         const adminId = req.user.user_id; // From JWT token
+
+        // Handle image - either from file upload or URL
+        if (req.file) {
+            updateData.image_url = `/uploads/events/${req.file.filename}`;
+        }
+
+        // Validate image_url if provided in update and no file uploaded
+        if (!req.file && updateData.image_url && typeof updateData.image_url !== 'string') {
+            return res.status(400).json({
+                error: 'image_url must be a string if provided'
+            });
+        }
 
         const event = await eventService.updateEvent(eventId, updateData, adminId);
         
