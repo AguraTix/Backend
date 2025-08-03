@@ -26,6 +26,9 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Serve static files for uploaded images
+app.use('/uploads', express.static('uploads'));
+
 // Session configuration for Passport
 app.use(session({ 
   secret: process.env.SESSION_SECRET || 'your-secret-key', 

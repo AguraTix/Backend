@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
 const isAdmin = require('../middleware/isAdmin');
+const { uploadEventImage, handleUploadError } = require('../middleware/imageUpload');
 
 /**
  * @swagger
@@ -29,12 +30,23 @@ const isAdmin = require('../middleware/isAdmin');
  *               date: { type: string, format: date-time }
  *               venue_id: { type: string }
  *               artist_lineup: { type: array, items: { type: string } }
+ *               image_url: { type: string, description: "Event image URL (optional)" }
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               description: { type: string }
+ *               date: { type: string, format: date-time }
+ *               venue_id: { type: string }
+ *               artist_lineup: { type: array, items: { type: string } }
+ *               event_image: { type: string, format: binary, description: "Event image file (optional)" }
  *     responses:
  *       201: { description: Event created }
  *       400: { description: Bad request }
  *       401: { description: Unauthorized }
  */
-router.post('/', isAdmin, eventController.createEvent);
+router.post('/', isAdmin, uploadEventImage, handleUploadError, eventController.createEvent);
 
 /**
  * @swagger
@@ -93,13 +105,24 @@ router.get('/:eventId', eventController.getEventById);
  *               date: { type: string, format: date-time }
  *               venue_id: { type: string }
  *               artist_lineup: { type: array, items: { type: string } }
+ *               image_url: { type: string, description: "Event image URL (optional)" }
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               description: { type: string }
+ *               date: { type: string, format: date-time }
+ *               venue_id: { type: string }
+ *               artist_lineup: { type: array, items: { type: string } }
+ *               event_image: { type: string, format: binary, description: "Event image file (optional)" }
  *     responses:
  *       200: { description: Event updated }
  *       400: { description: Bad request }
  *       401: { description: Unauthorized }
  *       404: { description: Event not found }
  */
-router.put('/:eventId', isAdmin, eventController.updateEvent);
+router.put('/:eventId', isAdmin, uploadEventImage, handleUploadError, eventController.updateEvent);
 
 /**
  * @swagger
