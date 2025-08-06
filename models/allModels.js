@@ -41,7 +41,8 @@ module.exports = (sequelize) => {
     venue_id: { type: DataTypes.UUID, allowNull: false },
     admin_id: { type: DataTypes.UUID, allowNull: false },
     artist_lineup: { type: DataTypes.JSON },
-    image_url: { type: DataTypes.STRING, allowNull: true },
+    event_images: { type: DataTypes.JSON, allowNull: true }, // Store event image data
+    image_url: { type: DataTypes.TEXT, allowNull: true },
 
     }, { tableName: 'events' });
 
