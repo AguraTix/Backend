@@ -102,7 +102,7 @@ module.exports = (sequelize) => {
             defaultValue: 'Active'
         }
     }, { tableName: 'tickets' });
-     const Food = sequelize.define('Food', {
+    const Food = sequelize.define('Food', {
     food_id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
