@@ -1,25 +1,7 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, '..', 'uploads', 'events');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        // Generate unique filename with timestamp
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const fileExtension = path.extname(file.originalname);
-        cb(null, 'event-' + uniqueSuffix + fileExtension);
-    }
-});
+// Configure storage to use memory instead of disk
+const storage = multer.memoryStorage();
 
 // File filter to accept only images
 const fileFilter = (req, file, cb) => {
@@ -30,38 +12,55 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-// Configure multer
+// Configure multer for multiple field types
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
+        fileSize: 5 * 1024 * 1024, // 5MB limit per file
+        files: 21 // 1 event image + up to 20 event images
     }
 });
 
-// Middleware for single image upload
-const uploadEventImage = upload.single('event_image');
+// Middleware for combined uploads
+const uploadCombined = upload.fields([
+    { name: 'event_image', maxCount: 1 },
+    { name: 'event_images', maxCount: 20 }
+]);
 
 // Error handling middleware
 const handleUploadError = (err, req, res, next) => {
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
-                error: 'File too large. Maximum size is 5MB.'
+                error: 'File too large. Maximum size is 5MB per image.'
+            });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+            return res.status(400).json({
+                error: 'Too many files. Maximum 1 event image and 20 event images allowed.'
+            });
+        }
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+                error: 'Unexpected field name. Use "event_image" for main event image and "event_images" for additional event images.'
             });
         }
         return res.status(400).json({
             error: 'File upload error: ' + err.message
         });
-    } else if (err) {
+    }
+    
+    if (err.message === 'Only image files are allowed!') {
         return res.status(400).json({
-            error: err.message
+            error: 'Only image files are allowed.'
         });
     }
-    next();
+    
+    next(err);
 };
 
 module.exports = {
-    uploadEventImage,
+    uploadCombined,
     handleUploadError
 };
