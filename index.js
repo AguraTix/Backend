@@ -28,7 +28,7 @@ app.use(express.json());
 
 // Configure CORS to allow frontend on localhost:5173
 app.use(cors({
-  origin: '*',
+  origin: 'http://localhost:5173',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
