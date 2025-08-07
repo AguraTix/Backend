@@ -102,12 +102,46 @@ module.exports = (sequelize) => {
             defaultValue: 'Active'
         }
     }, { tableName: 'tickets' });
+     const Food = sequelize.define('Food', {
+    food_id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true
+    },
+    FoodName: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    FoodImage: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    Quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    FoodPrice: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0.0
+    },
+    FoodDescription: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    }
+  }, {
+    tableName: 'foods'
+  });
 
   User.hasMany(Event, { foreignKey: 'admin_id' });
   Event.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
 
   User.hasMany(Venue, { foreignKey: 'admin_id' });
   Venue.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
+
+  User.hasMany(Food,{foreignKey: 'admin_id'});
+  Food.belongsTo(User, { foreignKey: 'admin_id', as: 'User'});
 
   Venue.hasMany(Event, { foreignKey: 'venue_id' });
   Event.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
@@ -153,7 +187,8 @@ module.exports = (sequelize) => {
     Section,
     Seat,
     TicketCategory,
-    Ticket
+    Ticket,
+    Food
   };
 
 };

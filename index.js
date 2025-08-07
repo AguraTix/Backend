@@ -10,6 +10,7 @@ const sectionRoutes = require('./routes/sectionRoutes');
 const seatRoutes = require('./routes/seatRoutes');
 const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
+const foodRoutes = require('./routes/foodRoutes');
 const cors = require('cors');
 
 const passwordResetRoutes = require('./routes/passwordResetRoutes');
@@ -27,7 +28,7 @@ app.use(express.json());
 
 // Configure CORS to allow frontend on localhost:5173
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -90,6 +91,7 @@ app.use('/api/ticket-categories', ticketCategoryRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/password-reset', passwordResetRoutes);
 app.use('/api/auth', googleRoutes);
+app.use('/api/foods',foodRoutes);
 
 
 app.use((err,req,res, next)=>{
