@@ -1,39 +1,38 @@
 const { Food } = require('../models');
-const { v4: uuidv4 } = require('uuid');
 
 exports.createFood = async (req, res) => {
   try {
-    const { FoodName, Quantity, FoodPrice, FoodDescription } = req.body;
-    const foodImage = req.files?.food_image?.[0];
+    const { foodname, quantity, foodprice, fooddescription, admin_id } = req.body;
+    const foodimage = req.file ? `/uploads/${req.file.filename}` : null;
 
-    if (!FoodName || !Quantity || !FoodPrice) {
-      return res.status(400).json({ error: 'FoodName, Quantity, and FoodPrice are required' });
+    // Validate required fields
+    if (!foodname || typeof foodname !== 'string' || foodname.trim() === '') {
+      return res.status(400).json({ error: 'Valid food name is required' });
     }
-
-    let foodImageUrl = null;
-    if (foodImage) {
-      foodImageUrl = `data:${foodImage.mimetype};base64,${foodImage.buffer.toString('base64')}`;
+    if (quantity === undefined || quantity === null || isNaN(quantity) || quantity < 0) {
+      return res.status(400).json({ error: 'Valid non-negative quantity is required' });
+    }
+    if (foodprice === undefined || foodprice === null || isNaN(foodprice) || foodprice < 0) {
+      return res.status(400).json({ error: 'Valid non-negative food price is required' });
+    }
+    if (!admin_id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(admin_id)) {
+      return res.status(400).json({ error: 'Valid admin ID (UUID) is required' });
     }
 
     const food = await Food.create({
-      food_id: uuidv4(),
-      FoodName,
-      FoodImage: foodImageUrl,
-      Quantity,
-      FoodPrice,
-      FoodDescription
+      foodname: foodname.trim(),
+      quantity: parseInt(quantity),
+      foodprice: parseFloat(foodprice),
+      foodimage,
+      fooddescription: fooddescription || null,
+      admin_id,
+      createdat: new Date(),
+      updatedat: new Date()
     });
 
     res.status(201).json({
       message: 'Food item created successfully',
-      food: {
-        food_id: food.food_id,
-        FoodName: food.FoodName,
-        FoodImage: food.FoodImage,
-        Quantity: food.Quantity,
-        FoodPrice: food.FoodPrice,
-        FoodDescription: food.FoodDescription
-      }
+      food
     });
   } catch (error) {
     console.error('Error creating food:', error);
@@ -68,37 +67,41 @@ exports.getFoodById = async (req, res) => {
 exports.updateFood = async (req, res) => {
   try {
     const { id } = req.params;
-    const { FoodName, Quantity, FoodPrice, FoodDescription } = req.body;
-    const foodImage = req.files?.food_image?.[0];
+    const { foodname, quantity, foodprice, fooddescription, admin_id } = req.body;
+    const foodimage = req.file ? `/uploads/${req.file.filename}` : null;
 
     const food = await Food.findByPk(id);
     if (!food) {
       return res.status(404).json({ error: 'Food item not found' });
     }
 
-    let foodImageUrl = food.FoodImage;
-    if (foodImage) {
-      foodImageUrl = `data:${foodImage.mimetype};base64,${foodImage.buffer.toString('base64')}`;
+    // Validate required fields
+    if (!foodname || typeof foodname !== 'string' || foodname.trim() === '') {
+      return res.status(400).json({ error: 'Valid food name is required' });
+    }
+    if (quantity === undefined || quantity === null || isNaN(quantity) || quantity < 0) {
+      return res.status(400).json({ error: 'Valid non-negative quantity is required' });
+    }
+    if (foodprice === undefined || foodprice === null || isNaN(foodprice) || foodprice < 0) {
+      return res.status(400).json({ error: 'Valid non-negative food price is required' });
+    }
+    if (!admin_id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(admin_id)) {
+      return res.status(400).json({ error: 'Valid admin ID (UUID) is required' });
     }
 
     await food.update({
-      FoodName,
-      FoodImage: foodImageUrl,
-      Quantity,
-      FoodPrice,
-      FoodDescription
+      foodname: foodname.trim(),
+      quantity: parseInt(quantity),
+      foodprice: parseFloat(foodprice),
+      foodimage: foodimage || food.foodimage,
+      fooddescription: fooddescription || food.fooddescription,
+      admin_id,
+      updatedat: new Date()
     });
 
     res.status(200).json({
       message: 'Food item updated successfully',
-      food: {
-        food_id: food.food_id,
-        FoodName: food.FoodName,
-        FoodImage: food.FoodImage,
-        Quantity: food.Quantity,
-        FoodPrice: food.FoodPrice,
-        FoodDescription: food.FoodDescription
-      }
+      food
     });
   } catch (error) {
     console.error('Error updating food:', error);
