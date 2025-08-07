@@ -2,70 +2,112 @@ const eventService = require('../services/eventService');
 
 // Create a new event
 exports.createEvent = async (req, res) => {
-    try {
-        const { title, description, date, venue_id, artist_lineup } = req.body;
-        const adminId = req.user.user_id;
+  try {
+    const { title, description, date, venue_id, artist_lineup, tickets } = req.body;
+    const eventImage = req.files?.event_image?.[0];
+    const eventImages = req.files?.event_images || [];
 
-        // Handle main event image
-        let eventImage = null;
-        if (req.files && req.files.event_image && req.files.event_image[0]) {
-            const file = req.files.event_image[0];
-            eventImage = {
-                filename: file.originalname,
-                mimetype: file.mimetype,
-                size: file.size,
-                data: file.buffer.toString('base64')
-            };
-        }
-
-        // Handle additional event images
-        let eventImages = null;
-        if (req.files && req.files.event_images && req.files.event_images.length > 0) {
-            eventImages = req.files.event_images.map(file => ({
-                filename: file.originalname,
-                mimetype: file.mimetype,
-                size: file.size,
-                data: file.buffer.toString('base64')
-            }));
-        }
-
-        // Parse artist_lineup if it's a string
-        let parsedArtistLineup = artist_lineup;
-        if (typeof artist_lineup === 'string') {
-            try {
-                parsedArtistLineup = JSON.parse(artist_lineup);
-            } catch (parseError) {
-                parsedArtistLineup = artist_lineup.split(',').map(name => name.trim());
-            }
-        }
-
-        const event = await eventService.createEvent({
-            title,
-            description,
-            date,
-            venue_id,
-            artist_lineup: parsedArtistLineup,
-            event_images: eventImages,
-            image_url: eventImage ? `data:${eventImage.mimetype};base64,${eventImage.data}` : null
-        }, adminId);
-
-        res.status(201).json({
-            message: 'Event created successfully',
-            event: {
-                ...event.toJSON(),
-                event_images: eventImages ? eventImages.map(img => ({
-                    filename: img.filename,
-                    mimetype: img.mimetype,
-                    size: img.size
-                })) : null,
-                image_count: eventImages ? eventImages.length : 0
-            }
-        });
-    } catch (error) {
-        res.status(400).json({
-            error: error.message
-        });
+    // Validate required fields
+    if (!title || !date || !venue_id) {
+      return res.status(400).json({ error: 'Title, date, and venue_id are required' });
     }
+
+    // Validate venue_id
+    const venue = await Venue.findByPk(venue_id);
+    if (!venue) {
+      return res.status(400).json({ error: 'Invalid venue_id' });
+    }
+
+    // Parse artist_lineup
+    let parsedArtistLineup = artist_lineup;
+    if (typeof artist_lineup === 'string') {
+      try {
+        parsedArtistLineup = JSON.parse(artist_lineup);
+      } catch (error) {
+        parsedArtistLineup = artist_lineup.split(',').map(item => item.trim());
+      }
+    }
+
+    // Parse tickets
+    let parsedTickets = [];
+    if (typeof tickets === 'string') {
+      try {
+        parsedTickets = JSON.parse(tickets);
+      } catch (error) {
+        return res.status(400).json({ error: 'Invalid tickets format' });
+      }
+    } else if (Array.isArray(tickets)) {
+      parsedTickets = tickets;
+    }
+
+    // Validate tickets
+    const validTicketTypes = ['Regular', 'VIP', 'VVIP'];
+    for (const ticket of parsedTickets) {
+      if (!validTicketTypes.includes(ticket.type)) {
+        return res.status(400).json({ error: `Invalid ticket type: ${ticket.type}. Must be Regular, VIP, or VVIP` });
+      }
+      if (typeof ticket.price !== 'number' || ticket.price < 0) {
+        return res.status(400).json({ error: 'Ticket price must be a non-negative number' });
+      }
+      if (typeof ticket.quantity !== 'number' || ticket.quantity < 0 || !Number.isInteger(ticket.quantity)) {
+        return res.status(400).json({ error: 'Ticket quantity must be a non-negative integer' });
+      }
+    }
+
+    // Process event_image
+    let imageUrl = null;
+    if (eventImage) {
+      imageUrl = `data:${eventImage.mimetype};base64,${eventImage.buffer.toString('base64')}`;
+    }
+
+    // Process event_images
+    const eventImagesData = eventImages.map(file => ({
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      data: file.buffer.toString('base64')
+    }));
+
+    // Create event
+    const event = await Event.create({
+      event_id: uuidv4(),
+      title,
+      description,
+      date,
+      venue_id,
+      admin_id: req.user.id, // Assumes isAdmin middleware sets req.user
+      artist_lineup: parsedArtistLineup,
+      event_images: eventImagesData,
+      image_url: imageUrl,
+      tickets: parsedTickets
+    });
+
+    // Prepare response (omit base64 data from event_images to reduce size)
+    const responseEvent = {
+      event_id: event.event_id,
+      title: event.title,
+      description: event.description,
+      date: event.date,
+      venue_id: event.venue_id,
+      artist_lineup: event.artist_lineup,
+      event_images: event.event_images.map(img => ({
+        filename: img.filename,
+        mimetype: img.mimetype,
+        size: img.size
+      })),
+      image_count: event.event_images.length,
+      image_url: event.image_url,
+      tickets: event.tickets
+    };
+
+    res.status(201).json({
+      message: 'Event created successfully',
+      event: responseEvent
+    });
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
 // Get all events

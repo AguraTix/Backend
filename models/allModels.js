@@ -43,6 +43,8 @@ module.exports = (sequelize) => {
     artist_lineup: { type: DataTypes.JSON },
     event_images: { type: DataTypes.JSON, allowNull: true }, // Store event image data
     image_url: { type: DataTypes.TEXT, allowNull: true },
+    tickets: {type: DataTypes.JSONB,allowNull: true
+    }
 
     }, { tableName: 'events' });
 

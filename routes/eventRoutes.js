@@ -9,7 +9,6 @@ const router = express.Router();
 const eventController = require('../controllers/eventController');
 const isAdmin = require('../middleware/isAdmin');
 const { uploadCombined, handleUploadError } = require('../middleware/imageUpload');
-
 /**
  * @swagger
  * /api/events:
@@ -19,20 +18,53 @@ const { uploadCombined, handleUploadError } = require('../middleware/imageUpload
  *     security:
  *       - bearerAuth: []
  *     requestBody:
- *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [title, description, date, venue_id]
  *             properties:
- *               title: { type: string, example: "Summer Music Festival" }
- *               description: { type: string, example: "Amazing outdoor music festival" }
- *               date: { type: string, format: date-time, example: "2025-08-06T17:45:26.461Z" }
- *               venue_id: { type: string, example: "123e4567-e89b-12d3-a456-426614174000" }
- *               artist_lineup: { type: string, description: "JSON string or comma-separated values", example: "[\"Artist 1\", \"Artist 2\"]" }
- *               event_image: { type: string, format: binary, description: "Main event image (optional, max 5MB)" }
- *               event_images: { type: array, items: { type: string, format: binary }, description: "Additional event images (optional, max 20 files, 5MB each)" }
+ *               title:
+ *                 type: string
+ *                 description: Event title
+ *                 example: Summer Music Festival
+ *               description:
+ *                 type: string
+ *                 description: Event description
+ *                 example: Amazing outdoor music festival
+ *               date:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Event date and time
+ *                 example: 2025-08-06T21:00:00.000Z
+ *               venue_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID of the venue
+ *                 example: 123e4567-e89b-12d3-a456-426614174000
+ *               artist_lineup:
+ *                 type: string
+ *                 description: JSON string or comma-separated list of artists
+ *                 example: '["Artist 1", "Artist 2"]'
+ *               tickets:
+ *                 type: string
+ *                 description: |
+ *                   JSON string of ticket array, e.g.:
+ *                   [
+ *                     {"type": "Regular", "price": 50, "quantity": 100},
+ *                     {"type": "VIP", "price": 100, "quantity": 50},
+ *                     {"type": "VVIP", "price": 150, "quantity": 25}
+ *                   ]
+ *                 example: '[{"type": "Regular", "price": 50, "quantity": 100}, {"type": "VIP", "price": 100, "quantity": 50}, {"type": "VVIP", "price": 150, "quantity": 25}]'
+ *               event_image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Main event image (max 2MB)
+ *               event_images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Additional event images (max 20, each 2MB)
  *     responses:
  *       201:
  *         description: Event created successfully
@@ -41,20 +73,39 @@ const { uploadCombined, handleUploadError } = require('../middleware/imageUpload
  *             schema:
  *               type: object
  *               properties:
- *                 message: { type: string }
+ *                 message:
+ *                   type: string
  *                 event:
  *                   type: object
  *                   properties:
- *                     event_id: { type: string }
+ *                     event_id: { type: string, format: uuid }
  *                     title: { type: string }
  *                     description: { type: string }
- *                     date: { type: string }
- *                     venue_id: { type: string }
- *                     artist_lineup: { type: array }
- *                     event_images: { type: array, description: "Image metadata (filename, mimetype, size)" }
- *                     image_count: { type: number }
- *       400: { description: Bad request }
- *       401: { description: Unauthorized }
+ *                     date: { type: string, format: date-time }
+ *                     venue_id: { type: string, format: uuid }
+ *                     artist_lineup: { type: array, items: { type: string } }
+ *                     event_images:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           filename: { type: string }
+ *                           mimetype: { type: string }
+ *                           size: { type: integer }
+ *                     image_count: { type: integer }
+ *                     image_url: { type: string }
+ *                     tickets:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           type: { type: string, enum: ['Regular', 'VIP', 'VVIP'] }
+ *                           price: { type: number }
+ *                           quantity: { type: integer }
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
  */
 router.post('/', isAdmin, uploadCombined, handleUploadError, eventController.createEvent);
 
