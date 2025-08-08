@@ -1,4 +1,5 @@
 const eventService = require('../services/eventService');
+const { Event, Venue, User } = require('../models');
 
 // Create a new event
 exports.createEvent = async (req, res) => {
@@ -70,12 +71,11 @@ exports.createEvent = async (req, res) => {
 
     // Create event
     const event = await Event.create({
-      event_id: uuidv4(),
       title,
       description,
       date,
       venue_id,
-      admin_id: req.user.id, // Assumes isAdmin middleware sets req.user
+      admin_id: req.user.user_id, // Use user_id instead of id
       artist_lineup: parsedArtistLineup,
       event_images: eventImagesData,
       image_url: imageUrl,
