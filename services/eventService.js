@@ -120,4 +120,48 @@ exports.getEventsByVenue = async (venueId) => {
         ]
     });
     return events;
+};
+
+// Get recent events with pagination and filtering
+exports.getRecentEvents = async (limit = 10, offset = 0, upcomingOnly = true) => {
+    const whereClause = {};
+    
+    // If upcomingOnly is true, only get events that haven't happened yet
+    if (upcomingOnly) {
+        whereClause.date = {
+            [require('sequelize').Op.gte]: new Date()
+        };
+    }
+    
+    const events = await Event.findAll({
+        where: whereClause,
+        order: [['createdAt', 'DESC']], // Most recently created first
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        include: [
+            {
+                model: User,
+                as: 'User',
+                attributes: ['user_id', 'name', 'email']
+            },
+            {
+                model: Venue,
+                as: 'Venue',
+                attributes: ['venue_id', 'name', 'location', 'capacity']
+            }
+        ]
+    });
+    
+    // Get total count for pagination
+    const totalCount = await Event.count({ where: whereClause });
+    
+    return {
+        events,
+        pagination: {
+            total: totalCount,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            hasMore: (parseInt(offset) + parseInt(limit)) < totalCount
+        }
+    };
 }; 

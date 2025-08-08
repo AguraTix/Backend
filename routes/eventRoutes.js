@@ -122,6 +122,126 @@ router.get('/', eventController.getAllEvents);
 
 /**
  * @swagger
+ * /api/events/recent:
+ *   get:
+ *     summary: Get recent events with pagination and filtering
+ *     tags: [Events]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *         description: Number of events to return (max 50)
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of events to skip for pagination
+ *       - in: query
+ *         name: upcomingOnly
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: If true, only return upcoming events (date >= current date)
+ *     responses:
+ *       200:
+ *         description: Recent events retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       event_id: { type: string, format: uuid }
+ *                       title: { type: string }
+ *                       description: { type: string }
+ *                       date: { type: string, format: date-time }
+ *                       venue_id: { type: string, format: uuid }
+ *                       artist_lineup: { type: array, items: { type: string } }
+ *                       image_url: { type: string }
+ *                       tickets: { type: array }
+ *                       User: { type: object }
+ *                       Venue: { type: object }
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     limit: { type: integer }
+ *                     offset: { type: integer }
+ *                     hasMore: { type: boolean }
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/recent', eventController.getRecentEvents);
+
+/**
+ * @swagger
+ * /api/events/upcoming:
+ *   get:
+ *     summary: Get upcoming events (events with date >= current date)
+ *     tags: [Events]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *         description: Number of events to return (max 50)
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of events to skip for pagination
+ *     responses:
+ *       200:
+ *         description: Upcoming events retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       event_id: { type: string, format: uuid }
+ *                       title: { type: string }
+ *                       description: { type: string }
+ *                       date: { type: string, format: date-time }
+ *                       venue_id: { type: string, format: uuid }
+ *                       artist_lineup: { type: array, items: { type: string } }
+ *                       image_url: { type: string }
+ *                       tickets: { type: array }
+ *                       User: { type: object }
+ *                       Venue: { type: object }
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     limit: { type: integer }
+ *                     offset: { type: integer }
+ *                     hasMore: { type: boolean }
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/upcoming', eventController.getRecentEvents);
+
+/**
+ * @swagger
  * /api/events/{eventId}:
  *   get:
  *     summary: Get an event by ID

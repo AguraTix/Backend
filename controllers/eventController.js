@@ -125,6 +125,31 @@ exports.getAllEvents = async (req, res) => {
     }
 };
 
+// Get recent events with pagination and filtering
+exports.getRecentEvents = async (req, res) => {
+    try {
+        const { limit = 10, offset = 0, upcomingOnly = 'true' } = req.query;
+        
+        // Validate query parameters
+        const parsedLimit = Math.min(parseInt(limit), 50); // Max 50 events per request
+        const parsedOffset = Math.max(parseInt(offset), 0);
+        const parsedUpcomingOnly = upcomingOnly === 'true';
+        
+        const result = await eventService.getRecentEvents(parsedLimit, parsedOffset, parsedUpcomingOnly);
+        
+        res.status(200).json({
+            message: 'Recent events retrieved successfully',
+            events: result.events,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        console.error('Error fetching recent events:', error);
+        res.status(500).json({
+            error: error.message
+        });
+    }
+};
+
 // Get event by ID
 exports.getEventById = async (req, res) => {
     try {
