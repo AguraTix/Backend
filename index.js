@@ -67,8 +67,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Temporarily disable Swagger to debug path-to-regexp error
-/*
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -97,7 +95,6 @@ const swaggerOptions = {
 };
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-*/
 
 app.use('/api/users',userRoutes);
 app.use('/api/venues', venueRoutes);
