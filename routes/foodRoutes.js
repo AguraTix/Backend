@@ -51,6 +51,33 @@ router.get('/', foodController.getAllFoods);
 
 /**
  * @swagger
+ * /api/foods/event/{eventId}:
+ *   get:
+ *     summary: Get food items for a specific event (menu items)
+ *     tags: [Foods]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The event ID to get foods for
+ *     responses:
+ *       200: 
+ *         description: Food items for the event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 foods: { type: array, items: { type: object } }
+ *                 eventId: { type: string }
+ *       500: { description: Internal server error }
+ */
+router.get('/event/:eventId', foodController.getFoodsByEvent);
+
+/**
+ * @swagger
  * /api/foods/{id}:
  *   get:
  *     summary: Get a food item by ID

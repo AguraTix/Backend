@@ -22,11 +22,22 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'No origin'}`);
+  next();
+});
+
 // CORS configuration for development
 const corsOptions = {
   origin: function (origin, callback) {
+    console.log('CORS request from origin:', origin);
+    
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('Allowing request with no origin');
+      return callback(null, true);
+    }
     
     // Allow localhost origins for development
     const allowedOrigins = [
@@ -37,21 +48,27 @@ const corsOptions = {
       'http://127.0.0.1:3000',
       'http://127.0.0.1:3001',
       'http://127.0.0.1:5173',
-      'http://127.0.0.1:4173'
+      'http://127.0.0.1:4173',
+      'http://localhost:8080',
+      'http://127.0.0.1:8080'
     ];
     
     if (allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin);
       return callback(null, true);
     }
     
     // For development, allow all origins (remove this in production)
+    console.log('Allowing all origins for development');
     return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length', 'Content-Type'],
-  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  preflightContinue: false,
+  maxAge: 86400 // Cache preflight response for 24 hours
 };
 app.use(cors(corsOptions));
 // Note: Avoid app.options('*', ...) on Express 5; global CORS middleware handles preflight.
