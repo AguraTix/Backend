@@ -52,6 +52,124 @@ router.get('/my-tickets', authenticate, ticketController.getUserTickets);
 
 /**
  * @swagger
+ * /api/tickets/recent:
+ *   get:
+ *     summary: Get recent tickets with pagination and filtering
+ *     tags: [Tickets]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *         description: Number of tickets to return (max 50)
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of tickets to skip for pagination
+ *       - in: query
+ *         name: attendeeId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter tickets by specific attendee ID (optional)
+ *     responses:
+ *       200:
+ *         description: Recent tickets retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 tickets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       ticket_id: { type: string, format: uuid }
+ *                       qr_code: { type: string }
+ *                       status: { type: string }
+ *                       createdAt: { type: string, format: date-time }
+ *                       TicketCategory: { type: object }
+ *                       Seat: { type: object }
+ *                       Attendee: { type: object }
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     limit: { type: integer }
+ *                     offset: { type: integer }
+ *                     hasMore: { type: boolean }
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/recent', ticketController.getRecentTickets);
+
+/**
+ * @swagger
+ * /api/tickets/recent/user:
+ *   get:
+ *     summary: Get recent tickets for the authenticated user
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *         description: Number of tickets to return (max 50)
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of tickets to skip for pagination
+ *     responses:
+ *       200:
+ *         description: User's recent tickets retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 tickets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       ticket_id: { type: string, format: uuid }
+ *                       qr_code: { type: string }
+ *                       status: { type: string }
+ *                       createdAt: { type: string, format: date-time }
+ *                       TicketCategory: { type: object }
+ *                       Seat: { type: object }
+ *                       Attendee: { type: object }
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     limit: { type: integer }
+ *                     offset: { type: integer }
+ *                     hasMore: { type: boolean }
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/recent/user', authenticate, ticketController.getRecentTickets);
+
+/**
+ * @swagger
  * /api/tickets/{ticketId}:
  *   get:
  *     summary: Get ticket by ID

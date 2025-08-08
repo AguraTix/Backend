@@ -58,15 +58,16 @@ exports.createEvent = async (req, res) => {
     // Process event_image
     let imageUrl = null;
     if (eventImage) {
-      imageUrl = `data:${eventImage.mimetype};base64,${eventImage.buffer.toString('base64')}`;
+      imageUrl = `/uploads/events/${eventImage.filename}`;
     }
 
     // Process event_images
     const eventImagesData = eventImages.map(file => ({
-      filename: file.originalname,
+      filename: file.filename,
+      originalname: file.originalname,
       mimetype: file.mimetype,
       size: file.size,
-      data: file.buffer.toString('base64')
+      path: `/uploads/events/${file.filename}`
     }));
 
     // Create event
@@ -82,7 +83,7 @@ exports.createEvent = async (req, res) => {
       tickets: parsedTickets
     });
 
-    // Prepare response (omit base64 data from event_images to reduce size)
+    // Prepare response (include image paths for frontend)
     const responseEvent = {
       event_id: event.event_id,
       title: event.title,
@@ -92,8 +93,10 @@ exports.createEvent = async (req, res) => {
       artist_lineup: event.artist_lineup,
       event_images: event.event_images.map(img => ({
         filename: img.filename,
+        originalname: img.originalname,
         mimetype: img.mimetype,
-        size: img.size
+        size: img.size,
+        path: img.path
       })),
       image_count: event.event_images.length,
       image_url: event.image_url,
@@ -179,10 +182,11 @@ exports.updateEvent = async (req, res) => {
         if (req.files && req.files.event_image && req.files.event_image[0]) {
             const file = req.files.event_image[0];
             eventImage = {
-                filename: file.originalname,
+                filename: file.filename,
+                originalname: file.originalname,
                 mimetype: file.mimetype,
                 size: file.size,
-                data: file.buffer.toString('base64')
+                path: `/uploads/events/${file.filename}`
             };
         }
 
@@ -190,10 +194,11 @@ exports.updateEvent = async (req, res) => {
         let eventImages = null;
         if (req.files && req.files.event_images && req.files.event_images.length > 0) {
             eventImages = req.files.event_images.map(file => ({
-                filename: file.originalname,
+                filename: file.filename,
+                originalname: file.originalname,
                 mimetype: file.mimetype,
                 size: file.size,
-                data: file.buffer.toString('base64')
+                path: `/uploads/events/${file.filename}`
             }));
         }
 
@@ -214,7 +219,7 @@ exports.updateEvent = async (req, res) => {
             venue_id,
             artist_lineup: parsedArtistLineup,
             event_images: eventImages,
-            image_url: eventImage ? `data:${eventImage.mimetype};base64,${eventImage.data}` : undefined
+            image_url: eventImage ? eventImage.path : undefined
         };
 
         const event = await eventService.updateEvent(eventId, updateData, adminId);
@@ -225,8 +230,10 @@ exports.updateEvent = async (req, res) => {
                 ...event.toJSON(),
                 event_images: eventImages ? eventImages.map(img => ({
                     filename: img.filename,
+                    originalname: img.originalname,
                     mimetype: img.mimetype,
-                    size: img.size
+                    size: img.size,
+                    path: img.path
                 })) : event.event_images,
                 image_count: eventImages ? eventImages.length : (event.event_images ? event.event_images.length : 0)
             }

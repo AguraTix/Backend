@@ -1,7 +1,35 @@
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
-// Configure storage to use memory instead of disk
-const storage = multer.memoryStorage();
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../uploads');
+const eventImagesDir = path.join(uploadsDir, 'events');
+const foodImagesDir = path.join(uploadsDir, 'foods');
+
+// Create directories if they don't exist
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(eventImagesDir)) {
+    fs.mkdirSync(eventImagesDir, { recursive: true });
+}
+if (!fs.existsSync(foodImagesDir)) {
+    fs.mkdirSync(foodImagesDir, { recursive: true });
+}
+
+// Configure storage for event images
+const eventStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, eventImagesDir);
+    },
+    filename: (req, file, cb) => {
+        // Generate unique filename with timestamp
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, `event-${uniqueSuffix}${ext}`);
+    }
+});
 
 // File filter to accept only images
 const fileFilter = (req, file, cb) => {
@@ -12,9 +40,9 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-// Configure multer for multiple field types
-const upload = multer({
-    storage: storage,
+// Configure multer for event images
+const uploadCombined = multer({
+    storage: eventStorage,
     fileFilter: fileFilter,
     limits: {
         fileSize: 5 * 1024 * 1024, // 5MB limit per file
@@ -23,7 +51,7 @@ const upload = multer({
 });
 
 // Middleware for combined uploads
-const uploadCombined = upload.fields([
+const uploadEventImages = uploadCombined.fields([
     { name: 'event_image', maxCount: 1 },
     { name: 'event_images', maxCount: 20 }
 ]);
@@ -61,6 +89,6 @@ const handleUploadError = (err, req, res, next) => {
 };
 
 module.exports = {
-    uploadCombined,
+    uploadEventImages,
     handleUploadError
 };

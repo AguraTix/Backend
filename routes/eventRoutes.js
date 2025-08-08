@@ -8,7 +8,7 @@ const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
 const isAdmin = require('../middleware/isAdmin');
-const { uploadCombined, handleUploadError } = require('../middleware/imageUpload');
+const { uploadEventImages, handleUploadError } = require('../middleware/imageUpload');
 /**
  * @swagger
  * /api/events:
@@ -107,7 +107,7 @@ const { uploadCombined, handleUploadError } = require('../middleware/imageUpload
  *       401:
  *         description: Unauthorized
  */
-router.post('/', isAdmin, uploadCombined, handleUploadError, eventController.createEvent);
+router.post('/', isAdmin, uploadEventImages, handleUploadError, eventController.createEvent);
 
 /**
  * @swagger
@@ -294,7 +294,7 @@ router.get('/:eventId', eventController.getEventById);
  *       401: { description: Unauthorized }
  *       404: { description: Event not found }
  */
-router.put('/:eventId', isAdmin, uploadCombined, handleUploadError, eventController.updateEvent);
+router.put('/:eventId', isAdmin, uploadEventImages, handleUploadError, eventController.updateEvent);
 
 /**
  * @swagger
