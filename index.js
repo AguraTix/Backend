@@ -13,6 +13,7 @@ const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const passwordResetRoutes = require('./routes/passwordResetRoutes');
 const foodRoutes = require('./routes/foodRoutes');
+const path = require('path');
 
 const passport = require('./middleware/passport');
 const { sequelize } = require('./models');
@@ -83,6 +84,9 @@ app.use(session({
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const swaggerOptions = {
   definition: {

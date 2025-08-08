@@ -5,10 +5,10 @@
      const { foodname, quantity, foodprice, fooddescription } = req.body;
      const admin_id = req.user?.user_id; // From JWT token
      
-     // Handle image from memory storage
+     // Handle image from disk storage
      let foodimage = null;
      if (req.file) {
-       foodimage = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+       foodimage = `/uploads/foods/${req.file.filename}`;
      }
  
      // Basic request logging
@@ -101,10 +101,10 @@ exports.getFoodsByEvent = async (req, res) => {
      const { foodname, quantity, foodprice, fooddescription } = req.body;
      const admin_id = req.user?.user_id; // From JWT token
      
-     // Handle image from memory storage
+     // Handle image from disk storage
      let newFoodImage = null;
      if (req.file) {
-       newFoodImage = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+       newFoodImage = `/uploads/foods/${req.file.filename}`;
      }
  
      // Basic request logging

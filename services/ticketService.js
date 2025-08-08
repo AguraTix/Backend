@@ -224,12 +224,70 @@ exports.getAvailableSeatsForCategory = async (categoryId) => {
     }
 
     const seats = await Seat.findAll({
-        where: { 
+        where: {
             section_id: category.section_id,
             status: 'Available'
-        },
-        order: [['number', 'ASC']]
+        }
     });
 
     return seats;
+};
+
+// Get recent tickets with pagination and filtering
+exports.getRecentTickets = async (limit = 10, offset = 0, attendeeId = null) => {
+    const whereClause = {};
+    
+    // If attendeeId is provided, filter by specific attendee
+    if (attendeeId) {
+        whereClause.attendee_id = attendeeId;
+    }
+    
+    const tickets = await Ticket.findAll({
+        where: whereClause,
+        order: [['createdAt', 'DESC']], // Most recently purchased first
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        include: [
+            {
+                model: TicketCategory,
+                as: 'TicketCategory',
+                attributes: ['category_id', 'name', 'price'],
+                include: [
+                    {
+                        model: Event,
+                        as: 'Event',
+                        attributes: ['event_id', 'title', 'date', 'image_url']
+                    },
+                    {
+                        model: Section,
+                        as: 'Section',
+                        attributes: ['section_id', 'name']
+                    }
+                ]
+            },
+            {
+                model: Seat,
+                as: 'Seat',
+                attributes: ['seat_id', 'number', 'status']
+            },
+            {
+                model: User,
+                as: 'Attendee',
+                attributes: ['user_id', 'name', 'email']
+            }
+        ]
+    });
+    
+    // Get total count for pagination
+    const totalCount = await Ticket.count({ where: whereClause });
+    
+    return {
+        tickets,
+        pagination: {
+            total: totalCount,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            hasMore: (parseInt(offset) + parseInt(limit)) < totalCount
+        }
+    };
 }; 

@@ -124,4 +124,34 @@ exports.getAvailableSeatsForCategory = async (req, res) => {
             error: error.message
         });
     }
+};
+
+// Get recent tickets with pagination and filtering
+exports.getRecentTickets = async (req, res) => {
+    try {
+        const { limit = 10, offset = 0, attendeeId = null } = req.query;
+        
+        // Validate query parameters
+        const parsedLimit = Math.min(parseInt(limit), 50); // Max 50 tickets per request
+        const parsedOffset = Math.max(parseInt(offset), 0);
+        
+        // If user is authenticated and no attendeeId provided, use the authenticated user's ID
+        let finalAttendeeId = attendeeId;
+        if (!attendeeId && req.user && req.user.user_id) {
+            finalAttendeeId = req.user.user_id;
+        }
+        
+        const result = await ticketService.getRecentTickets(parsedLimit, parsedOffset, finalAttendeeId);
+        
+        res.status(200).json({
+            message: 'Recent tickets retrieved successfully',
+            tickets: result.tickets,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        console.error('Error fetching recent tickets:', error);
+        res.status(500).json({
+            error: error.message
+        });
+    }
 }; 
