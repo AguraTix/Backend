@@ -109,16 +109,24 @@ const Food = sequelize.define('Food', {
     quantity: {type: DataTypes.INTEGER,allowNull: false,defaultValue: 0,},
     foodprice: {type: DataTypes.FLOAT,allowNull: false,defaultValue: 0.0,},
     fooddescription: {type: DataTypes.TEXT,allowNull: true,},
-    createdat: {
+    admin_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'admins',
+        key: 'id'
+      }
+    },
+    createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
+      field: 'createdat' // Map to lowercase column
     },
-    updatedat: {
+    updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
+      field: 'updatedat' // Map to lowercase column
+    }
     }, {tableName: 'foods'});
 
   User.hasMany(Event, { foreignKey: 'admin_id' });
