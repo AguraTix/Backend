@@ -102,37 +102,32 @@ module.exports = (sequelize) => {
             defaultValue: 'Active'
         }
     }, { tableName: 'tickets' });
-    const Food = sequelize.define('Food', {
-    food_id: {
+const Food = sequelize.define('Food', {
+    food_id: {type: DataTypes.UUID,defaultValue: DataTypes.UUIDV4,primaryKey: true,},
+    foodname: {type: DataTypes.STRING,allowNull: false,},
+    foodimage: {type: DataTypes.TEXT,allowNull: true,},
+    quantity: {type: DataTypes.INTEGER,allowNull: false,defaultValue: 0,},
+    foodprice: {type: DataTypes.FLOAT,allowNull: false,defaultValue: 0.0,},
+    fooddescription: {type: DataTypes.TEXT,allowNull: true,},
+    admin_id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
-    },
-    FoodName: {
-      type: DataTypes.STRING,
-      allowNull: false
-    },
-    FoodImage: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    Quantity: {
-      type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 0
+      references: {
+        model: 'admins',
+        key: 'id'
+      }
     },
-    FoodPrice: {
-      type: DataTypes.FLOAT,
+    createdAt: {
+      type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: 0.0
+      field: 'createdat' // Map to lowercase column
     },
-    FoodDescription: {
-      type: DataTypes.TEXT,
-      allowNull: true
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      field: 'updatedat' // Map to lowercase column
     }
-  }, {
-    tableName: 'foods'
-  });
+    }, {tableName: 'foods'});
 
   User.hasMany(Event, { foreignKey: 'admin_id' });
   Event.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });

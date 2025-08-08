@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const foodController = require('../controllers/foodController.js');
-const { uploadCombined, handleUploadError } = require('../middleware/imageUpload');
-const isAdmin = require('../middleware/isAdmin.js');
+const foodController = require('../controllers/foodController');
+const { uploadFoodImage, handleUploadError } = require('../middleware/foodImageUpload');
+const isAdmin = require('../middleware/isAdmin');
+
+/**
+ * @swagger
+ * tags:
+ *   name: Foods
+ *   description: Food management endpoints
+ */
 
 /**
  * @swagger
@@ -13,209 +20,104 @@ const isAdmin = require('../middleware/isAdmin.js');
  *     security:
  *       - bearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
- *               FoodName:
- *                 type: string
- *                 description: Name of the food item
- *                 example: Chicken Burger
- *               Quantity:
- *                 type: integer
- *                 description: Available quantity
- *                 example: 50
- *               FoodPrice:
- *                 type: number
- *                 description: Price of the food item
- *                 example: 12.50
- *               FoodDescription:
- *                 type: string
- *                 description: Description of the food item
- *                 example: Delicious grilled chicken burger
- *               food_image:
- *                 type: string
- *                 format: binary
- *                 description: Food image (max 2MB)
+ *               foodname: { type: string, example: Chicken Burger }
+ *               quantity: { type: integer, example: 50 }
+ *               foodprice: { type: number, example: 12.5 }
+ *               fooddescription: { type: string, example: Delicious grilled chicken burger }
+ *               foodimage: { type: string, format: binary }
  *     responses:
- *       201:
- *         description: Food item created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 food:
- *                   type: object
- *                   properties:
- *                     food_id: { type: string, format: uuid }
- *                     FoodName: { type: string }
- *                     FoodImage: { type: string }
- *                     Quantity: { type: integer }
- *                     FoodPrice: { type: number }
- *                     FoodDescription: { type: string }
- *       400:
- *         description: Invalid input
- *       401:
- *         description: Unauthorized
+ *       201: { description: Food item created successfully }
+ *       400: { description: Invalid input }
+ *       401: { description: Unauthorized }
+ */
+router.post('/', isAdmin, uploadFoodImage, handleUploadError, foodController.createFood);
+
+/**
+ * @swagger
+ * /api/foods:
  *   get:
  *     summary: Get all food items
  *     tags: [Foods]
- *     security:
- *       - bearerAuth: []
  *     responses:
- *       200:
- *         description: List of food items
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 foods:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       food_id: { type: string, format: uuid }
- *                       FoodName: { type: string }
- *                       FoodImage: { type: string }
- *                       Quantity: { type: integer }
- *                       FoodPrice: { type: number }
- *                       FoodDescription: { type: string }
- *       500:
- *         description: Internal server error
+ *       200: { description: List of food items }
+ */
+router.get('/', foodController.getAllFoods);
+
+/**
+ * @swagger
  * /api/foods/{id}:
  *   get:
  *     summary: Get a food item by ID
  *     tags: [Foods]
- *     security:
- *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Food item details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 food:
- *                   type: object
- *                   properties:
- *                     food_id: { type: string, format: uuid }
- *                     FoodName: { type: string }
- *                     FoodImage: { type: string }
- *                     Quantity: { type: integer }
- *                     FoodPrice: { type: number }
- *                     FoodDescription: { type: string }
- *       404:
- *         description: Food item not found
- *       500:
- *         description: Internal server error
+ *       200: { description: Food item found }
+ *       404: { description: Food item not found }
+ */
+router.get('/:id', foodController.getFoodById);
+
+/**
+ * @swagger
+ * /api/foods/{id}:
  *   put:
  *     summary: Update a food item
  *     tags: [Foods]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *     requestBody:
+ *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
- *               FoodName:
- *                 type: string
- *                 description: Name of the food item
- *                 example: Chicken Burger
- *               Quantity:
- *                 type: integer
- *                 description: Available quantity
- *                 example: 50
- *               FoodPrice:
- *                 type: number
- *                 description: Price of the food item
- *                 example: 12.50
- *               FoodDescription:
- *                 type: string
- *                 description: Description of the food item
- *                 example: Delicious grilled chicken burger
- *               food_image:
- *                 type: string
- *                 format: binary
- *                 description: New food image (max 2MB)
+ *               foodname: { type: string, example: Chicken Burger }
+ *               quantity: { type: integer, example: 50 }
+ *               foodprice: { type: number, example: 12.5 }
+ *               fooddescription: { type: string }
+ *               foodimage: { type: string, format: binary }
  *     responses:
- *       200:
- *         description: Food item updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 food:
- *                   type: object
- *                   properties:
- *                     food_id: { type: string, format: uuid }
- *                     FoodName: { type: string }
- *                     FoodImage: { type: string }
- *                     Quantity: { type: integer }
- *                     FoodPrice: { type: number }
- *                     FoodDescription: { type: string }
- *       404:
- *         description: Food item not found
- *       400:
- *         description: Invalid input
- *       401:
- *         description: Unauthorized
+ *       200: { description: Food item updated }
+ *       400: { description: Bad request }
+ *       401: { description: Unauthorized }
+ *       404: { description: Food item not found }
+ */
+router.put('/:id', isAdmin, uploadFoodImage, handleUploadError, foodController.updateFood);
+
+/**
+ * @swagger
+ * /api/foods/{id}:
  *   delete:
  *     summary: Delete a food item
  *     tags: [Foods]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Food item deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *       404:
- *         description: Food item not found
- *       401:
- *         description: Unauthorized
+ *       200: { description: Food item deleted }
+ *       400: { description: Bad request }
+ *       401: { description: Unauthorized }
+ *       404: { description: Food item not found }
  */
-
-router.post('/', isAdmin, uploadCombined, handleUploadError, foodController.createFood);
-router.get('/', isAdmin, foodController.getAllFoods);
-router.get('/:id', isAdmin, foodController.getFoodById);
-router.put('/:id', isAdmin, uploadCombined, handleUploadError, foodController.updateFood);
 router.delete('/:id', isAdmin, foodController.deleteFood);
 
 module.exports = router;

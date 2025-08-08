@@ -3,6 +3,7 @@ const {Sequelize} = require('sequelize');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');  
 const session = require('express-session');
+const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
 const venueRoutes = require('./routes/venueRoutes');
 const eventRoutes = require('./routes/eventRoutes');
@@ -10,13 +11,8 @@ const sectionRoutes = require('./routes/sectionRoutes');
 const seatRoutes = require('./routes/seatRoutes');
 const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
-const foodRoutes = require('./routes/foodRoutes');
-const cors = require('cors');
-
 const passwordResetRoutes = require('./routes/passwordResetRoutes');
-const googleRoutes = require('./routes/googleRoutes');
-
-
+const foodRoutes = require('./routes/foodRoutes');
 
 const passport = require('./middleware/passport');
 const { sequelize } = require('./models');
@@ -26,16 +22,39 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-// Configure CORS to allow frontend on localhost:5173
-app.use(cors({
-  origin: 'http://localhost:5173',
+// CORS configuration for development
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost origins for development
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'http://localhost:5173',
+      'http://localhost:4173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:4173'
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // For development, allow all origins (remove this in production)
+    return callback(null, true);
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
-
-// Serve static files for uploaded images
-app.use('/uploads', express.static('uploads'));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+app.use(cors(corsOptions));
+// Note: Avoid app.options('*', ...) on Express 5; global CORS middleware handles preflight.
 
 // Session configuration for Passport
 app.use(session({ 
@@ -48,6 +67,8 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Temporarily disable Swagger to debug path-to-regexp error
+/*
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -76,23 +97,17 @@ const swaggerOptions = {
 };
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+*/
 
 app.use('/api/users',userRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/sections', sectionRoutes);
-app.use('/api/sections', seatRoutes);
-app.use('/api/ticket-categories', ticketCategoryRoutes);
-app.use('/api/tickets', ticketRoutes);
-
-app.use('/api/sections', sectionRoutes);
 app.use('/api/seats', seatRoutes);
 app.use('/api/ticket-categories', ticketCategoryRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/password-reset', passwordResetRoutes);
-app.use('/api/auth', googleRoutes);
-app.use('/api/foods',foodRoutes);
-
+app.use('/api/foods', foodRoutes);
 
 app.use((err,req,res, next)=>{
     console.error('Error:', err.stack);
