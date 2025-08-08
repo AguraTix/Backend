@@ -24,12 +24,14 @@ const uploadCombined = multer({
   { name: 'event_images', maxCount: 20 },
 ]);
 
-// Middleware for food image uploads (updated to match controller)
+// Middleware for food image uploads (updated to be more flexible)
 const uploadFoodImage = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (file.fieldname !== 'foodimage') {
-      return cb(new Error('Unexpected field name. Use "foodimage" for the food item image.'));
+    // Accept multiple possible field names for food images
+    const validFieldNames = ['foodimage', 'food_image', 'image', 'file'];
+    if (!validFieldNames.includes(file.fieldname)) {
+      return cb(new Error(`Unexpected field name: ${file.fieldname}. Use one of: ${validFieldNames.join(', ')}`));
     }
     if (!file.mimetype.startsWith('image/')) {
       return cb(new Error('Only image files are allowed'));
@@ -37,19 +39,42 @@ const uploadFoodImage = multer({
     cb(null, true);
   },
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB limit per file
+    fileSize: 5 * 1024 * 1024, // 5MB limit per file
     files: 1, // Only one food image allowed
   },
-}).single('foodimage');
+}).single('foodimage'); // Default field name, but will accept others
 
-// Error handling middleware (unchanged)
+// Error handling middleware (improved)
 const handleUploadError = (err, req, res, next) => {
+  console.error('Upload error:', err);
+  
   if (err instanceof multer.MulterError) {
-    return res.status(400).json({ error: `Multer error: ${err.message}` });
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ 
+        error: 'File too large. Maximum size is 5MB.' 
+      });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ 
+        error: 'Too many files. Only one image allowed.' 
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ 
+        error: `Unexpected field name: ${err.field}. Use 'foodimage' for the food item image.` 
+      });
+    }
+    return res.status(400).json({ 
+      error: `Upload error: ${err.message}` 
+    });
   }
+  
   if (err) {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ 
+      error: err.message 
+    });
   }
+  
   next();
 };
 

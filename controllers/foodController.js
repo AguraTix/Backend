@@ -17,16 +17,16 @@
  
      // Validate required fields
      if (!foodname || typeof foodname !== 'string' || foodname.trim() === '') {
-       throw new Error('Valid food name is required');
+       return res.status(400).json({ error: 'Valid food name is required' });
      }
      if (quantity === undefined || quantity === null || isNaN(quantity) || Number(quantity) < 0) {
-       throw new Error('Valid non-negative quantity is required');
+       return res.status(400).json({ error: 'Valid non-negative quantity is required' });
      }
      if (foodprice === undefined || foodprice === null || isNaN(foodprice) || Number(foodprice) < 0) {
-       throw new Error('Valid non-negative food price is required');
+       return res.status(400).json({ error: 'Valid non-negative food price is required' });
      }
      if (!admin_id) {
-       throw new Error('Unauthorized: missing admin ID');
+       return res.status(401).json({ error: 'Unauthorized: missing admin ID' });
      }
  
      const food = await Food.create({
@@ -44,7 +44,7 @@
      });
    } catch (error) {
      console.error('Error creating food:', error);
-     res.status(400).json({ error: error.message });
+     res.status(500).json({ error: 'Internal server error' });
    }
  };
  
@@ -60,6 +60,26 @@
      res.status(500).json({ error: error.message });
    }
  };
+
+// Get foods by event ID (for menu items)
+exports.getFoodsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    
+    // For now, return all foods since we don't have event-food relationship
+    // You can modify this later when you add event-food associations
+    const foods = await Food.findAll();
+    
+    res.status(200).json({
+      message: 'Foods retrieved successfully',
+      foods,
+      eventId
+    });
+  } catch (error) {
+    console.error('Error fetching foods by event:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
  
  exports.getFoodById = async (req, res) => {
    try {
@@ -93,21 +113,21 @@
  
      // Validate required fields
      if (!foodname || typeof foodname !== 'string' || foodname.trim() === '') {
-       throw new Error('Valid food name is required');
+       return res.status(400).json({ error: 'Valid food name is required' });
      }
      if (quantity === undefined || quantity === null || isNaN(quantity) || Number(quantity) < 0) {
-       throw new Error('Valid non-negative quantity is required');
+       return res.status(400).json({ error: 'Valid non-negative quantity is required' });
      }
      if (foodprice === undefined || foodprice === null || isNaN(foodprice) || Number(foodprice) < 0) {
-       throw new Error('Valid non-negative food price is required');
+       return res.status(400).json({ error: 'Valid non-negative food price is required' });
      }
      if (!admin_id) {
-       throw new Error('Unauthorized: missing admin ID');
+       return res.status(401).json({ error: 'Unauthorized: missing admin ID' });
      }
  
      const food = await Food.findByPk(id);
      if (!food) {
-       throw new Error('Food item not found');
+       return res.status(404).json({ error: 'Food item not found' });
      }
  
      await food.update({
@@ -122,7 +142,7 @@
      res.status(200).json({ message: 'Food item updated successfully', food });
    } catch (error) {
      console.error('Error updating food:', error);
-     res.status(400).json({ error: error.message });
+     res.status(500).json({ error: 'Internal server error' });
    }
  };
  
