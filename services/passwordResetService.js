@@ -1,6 +1,7 @@
 const { User } = require('../models');
 const bcrypt = require('bcrypt');
 const validator = require('validator');
+const { sendPasswordResetEmail } = require('./emailService');
 
 // Generate a 6-digit verification code
 function generateVerificationCode() {
@@ -26,18 +27,21 @@ exports.requestPasswordReset = async (identifier) => {
     // Generate verification code
     const verificationCode = generateVerificationCode();
     
-    // For now, we'll store the code in a simple way (in production, use database)
-    // Store code temporarily (you can use Redis or database table later)
+    // Persist verification code and expiry on the user
     user.verificationCode = verificationCode;
     user.codeExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     await user.save();
 
-    // Log verification code to console (for development/testing)
-    console.log(`\nPASSWORD RESET CODE:`);
-    console.log(`Email: ${user.email}`);
-    console.log(`Verification Code: ${verificationCode}`);
-    console.log(`Expires: ${user.codeExpiresAt.toLocaleString()}`);
-    console.log(`\n`);
+    // Send email to the actual user's email
+    if (user.email) {
+        try {
+            const recipient = isEmail ? identifier : user.email;
+            await sendPasswordResetEmail(recipient, verificationCode);
+        } catch (emailError) {
+            // Keep behavior resilient: still return success so user isn't leaked info
+            console.error('Failed to send password reset email:', emailError);
+        }
+    }
 
     return {
         message: 'Password reset code sent to your email',
