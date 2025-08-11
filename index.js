@@ -119,6 +119,16 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
+// Safe config log to verify .env is loaded (no secrets printed)
+console.log('Configuration loaded:', {
+  appName: process.env.APP_NAME || 'GloriaAppPassword',
+  port: process.env.PORT || 3000,
+  smtpHost: process.env.SMTP_HOST ? 'set' : 'not set',
+  smtpPort: process.env.SMTP_PORT || 'default 587',
+  emailFrom: process.env.EMAIL_FROM || 'gloriantwari@gmail.com',
+  resetCodeSendTo: process.env.RESET_CODE_SEND_TO || 'not set',
+});
+
 app.use('/api/users',userRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/events', eventRoutes);
