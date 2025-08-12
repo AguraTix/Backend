@@ -96,10 +96,10 @@ exports.createEvent = async (req, res) => {
         originalname: img.originalname,
         mimetype: img.mimetype,
         size: img.size,
-        path: img.path
+        path: `${req.protocol}://${req.get('host')}${img.path}`
       })),
       image_count: event.event_images.length,
-      image_url: event.image_url,
+      image_url: event.image_url ? `${req.protocol}://${req.get('host')}${event.image_url}` : null,
       tickets: event.tickets
     };
 
@@ -117,9 +117,32 @@ exports.createEvent = async (req, res) => {
 exports.getAllEvents = async (req, res) => {
     try {
         const events = await eventService.getAllEvents();
+        
+        // Process events to ensure proper image URLs
+        const processedEvents = events.map(event => {
+            const eventData = event.toJSON();
+            
+            // Ensure image_url has full path if it exists
+            if (eventData.image_url && !eventData.image_url.startsWith('http')) {
+                eventData.image_url = `${req.protocol}://${req.get('host')}${eventData.image_url}`;
+            }
+            
+            // Process event_images array
+            if (eventData.event_images && Array.isArray(eventData.event_images)) {
+                eventData.event_images = eventData.event_images.map(img => ({
+                    ...img,
+                    path: img.path && !img.path.startsWith('http') 
+                        ? `${req.protocol}://${req.get('host')}${img.path}` 
+                        : img.path
+                }));
+            }
+            
+            return eventData;
+        });
+        
         res.status(200).json({
             message: 'Events retrieved successfully',
-            events
+            events: processedEvents
         });
     } catch (error) {
         res.status(500).json({
@@ -140,9 +163,31 @@ exports.getRecentEvents = async (req, res) => {
         
         const result = await eventService.getRecentEvents(parsedLimit, parsedOffset, parsedUpcomingOnly);
         
+        // Process events to ensure proper image URLs
+        const processedEvents = result.events.map(event => {
+            const eventData = event.toJSON();
+            
+            // Ensure image_url has full path if it exists
+            if (eventData.image_url && !eventData.image_url.startsWith('http')) {
+                eventData.image_url = `${req.protocol}://${req.get('host')}${eventData.image_url}`;
+            }
+            
+            // Process event_images array
+            if (eventData.event_images && Array.isArray(eventData.event_images)) {
+                eventData.event_images = eventData.event_images.map(img => ({
+                    ...img,
+                    path: img.path && !img.path.startsWith('http') 
+                        ? `${req.protocol}://${req.get('host')}${img.path}` 
+                        : img.path
+                }));
+            }
+            
+            return eventData;
+        });
+        
         res.status(200).json({
             message: 'Recent events retrieved successfully',
-            events: result.events,
+            events: processedEvents,
             pagination: result.pagination
         });
     } catch (error) {
@@ -159,9 +204,27 @@ exports.getEventById = async (req, res) => {
         const { eventId } = req.params;
         const event = await eventService.getEventById(eventId);
         
+        // Process event to ensure proper image URLs
+        const eventData = event.toJSON();
+        
+        // Ensure image_url has full path if it exists
+        if (eventData.image_url && !eventData.image_url.startsWith('http')) {
+            eventData.image_url = `${req.protocol}://${req.get('host')}${eventData.image_url}`;
+        }
+        
+        // Process event_images array
+        if (eventData.event_images && Array.isArray(eventData.event_images)) {
+            eventData.event_images = eventData.event_images.map(img => ({
+                ...img,
+                path: img.path && !img.path.startsWith('http') 
+                    ? `${req.protocol}://${req.get('host')}${img.path}` 
+                    : img.path
+            }));
+        }
+        
         res.status(200).json({
             message: 'Event retrieved successfully',
-            event
+            event: eventData
         });
     } catch (error) {
         res.status(404).json({
@@ -233,8 +296,17 @@ exports.updateEvent = async (req, res) => {
                     originalname: img.originalname,
                     mimetype: img.mimetype,
                     size: img.size,
-                    path: img.path
-                })) : event.event_images,
+                    path: `${req.protocol}://${req.get('host')}${img.path}`
+                })) : (event.event_images ? event.event_images.map(img => ({
+                    ...img,
+                    path: img.path && !img.path.startsWith('http') 
+                        ? `${req.protocol}://${req.get('host')}${img.path}` 
+                        : img.path
+                })) : []),
+                image_url: eventImage ? `${req.protocol}://${req.get('host')}${eventImage.path}` : 
+                    (event.image_url && !event.image_url.startsWith('http') 
+                        ? `${req.protocol}://${req.get('host')}${event.image_url}` 
+                        : event.image_url),
                 image_count: eventImages ? eventImages.length : (event.event_images ? event.event_images.length : 0)
             }
         });
@@ -267,9 +339,31 @@ exports.getEventsByVenue = async (req, res) => {
         const { venueId } = req.params;
         const events = await eventService.getEventsByVenue(venueId);
         
+        // Process events to ensure proper image URLs
+        const processedEvents = events.map(event => {
+            const eventData = event.toJSON();
+            
+            // Ensure image_url has full path if it exists
+            if (eventData.image_url && !eventData.image_url.startsWith('http')) {
+                eventData.image_url = `${req.protocol}://${req.get('host')}${eventData.image_url}`;
+            }
+            
+            // Process event_images array
+            if (eventData.event_images && Array.isArray(eventData.event_images)) {
+                eventData.event_images = eventData.event_images.map(img => ({
+                    ...img,
+                    path: img.path && !img.path.startsWith('http') 
+                        ? `${req.protocol}://${req.get('host')}${img.path}` 
+                        : img.path
+                }));
+            }
+            
+            return eventData;
+        });
+        
         res.json({
             message: 'Events retrieved successfully',
-            events
+            events: processedEvents
         });
     } catch (error) {
         res.status(400).json({
@@ -290,12 +384,28 @@ exports.getEventImages = async (req, res) => {
             });
         }
 
+        // Process event images to ensure proper URLs
+        let processedEventImages = [];
+        if (event.event_images && Array.isArray(event.event_images)) {
+            processedEventImages = event.event_images.map(img => ({
+                ...img,
+                path: img.path && !img.path.startsWith('http') 
+                    ? `${req.protocol}://${req.get('host')}${img.path}` 
+                    : img.path
+            }));
+        }
+
+        let processedImageUrl = event.image_url;
+        if (processedImageUrl && !processedImageUrl.startsWith('http')) {
+            processedImageUrl = `${req.protocol}://${req.get('host')}${processedImageUrl}`;
+        }
+
         res.json({
             message: 'Event images retrieved successfully',
             event_id: eventId,
-            event_images: event.event_images || [],
-            image_url: event.image_url || null,
-            image_count: event.event_images ? event.event_images.length : 0
+            event_images: processedEventImages,
+            image_url: processedImageUrl,
+            image_count: processedEventImages.length
         });
     } catch (error) {
         res.status(400).json({

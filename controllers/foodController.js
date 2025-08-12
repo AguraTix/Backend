@@ -4,12 +4,7 @@
    try {
      const { foodname, quantity, foodprice, fooddescription } = req.body;
      const admin_id = req.user?.user_id; // From JWT token
-     
-     // Handle image from disk storage
-     let foodimage = null;
-     if (req.file) {
-       foodimage = `/uploads/foods/${req.file.filename}`;
-     }
+     const foodimage = req.file ? `/uploads/${req.file.filename}` : null;
  
      // Basic request logging
      console.log('Request body:', req.body);
@@ -17,19 +12,19 @@
  
      // Validate required fields
      if (!foodname || typeof foodname !== 'string' || foodname.trim() === '') {
-       return res.status(400).json({ error: 'Valid food name is required' });
+       throw new Error('Valid food name is required');
      }
      if (quantity === undefined || quantity === null || isNaN(quantity) || Number(quantity) < 0) {
-       return res.status(400).json({ error: 'Valid non-negative quantity is required' });
+       throw new Error('Valid non-negative quantity is required');
      }
      if (foodprice === undefined || foodprice === null || isNaN(foodprice) || Number(foodprice) < 0) {
-       return res.status(400).json({ error: 'Valid non-negative food price is required' });
+       throw new Error('Valid non-negative food price is required');
      }
      if (!admin_id) {
-       return res.status(401).json({ error: 'Unauthorized: missing admin ID' });
+       throw new Error('Unauthorized: missing admin ID');
      }
  
-     const food = await Food.create({
+          const food = await Food.create({
        foodname: foodname.trim(),
        quantity: parseInt(quantity, 10),
        foodprice: parseFloat(foodprice),
@@ -37,23 +32,44 @@
        fooddescription: fooddescription || null,
        admin_id
      });
- 
+
+     // Process food to ensure proper image URL
+     const foodData = food.toJSON();
+     
+     // Ensure foodimage has full path if it exists
+     if (foodData.foodimage && !foodData.foodimage.startsWith('http')) {
+       foodData.foodimage = `${req.protocol}://${req.get('host')}${foodData.foodimage}`;
+     }
+
      res.status(201).json({
        message: 'Food item created successfully',
-       food
+       food: foodData
      });
    } catch (error) {
      console.error('Error creating food:', error);
-     res.status(500).json({ error: 'Internal server error' });
+     res.status(400).json({ error: error.message });
    }
  };
  
  exports.getAllFoods = async (req, res) => {
    try {
      const foods = await Food.findAll();
+     
+     // Process foods to ensure proper image URLs
+     const processedFoods = foods.map(food => {
+       const foodData = food.toJSON();
+       
+       // Ensure foodimage has full path if it exists
+       if (foodData.foodimage && !foodData.foodimage.startsWith('http')) {
+         foodData.foodimage = `${req.protocol}://${req.get('host')}${foodData.foodimage}`;
+       }
+       
+       return foodData;
+     });
+     
      res.status(200).json({
        message: 'Foods retrieved successfully',
-       foods
+       foods: processedFoods
      });
    } catch (error) {
      console.error('Error fetching foods:', error);
@@ -70,9 +86,21 @@ exports.getFoodsByEvent = async (req, res) => {
     // You can modify this later when you add event-food associations
     const foods = await Food.findAll();
     
+    // Process foods to ensure proper image URLs
+    const processedFoods = foods.map(food => {
+      const foodData = food.toJSON();
+      
+      // Ensure foodimage has full path if it exists
+      if (foodData.foodimage && !foodData.foodimage.startsWith('http')) {
+        foodData.foodimage = `${req.protocol}://${req.get('host')}${foodData.foodimage}`;
+      }
+      
+      return foodData;
+    });
+    
     res.status(200).json({
       message: 'Foods retrieved successfully',
-      foods,
+      foods: processedFoods,
       eventId
     });
   } catch (error) {
@@ -88,7 +116,16 @@ exports.getFoodsByEvent = async (req, res) => {
      if (!food) {
        throw new Error('Food item not found');
      }
-     res.status(200).json({ message: 'Food retrieved successfully', food });
+     
+     // Process food to ensure proper image URL
+     const foodData = food.toJSON();
+     
+     // Ensure foodimage has full path if it exists
+     if (foodData.foodimage && !foodData.foodimage.startsWith('http')) {
+       foodData.foodimage = `${req.protocol}://${req.get('host')}${foodData.foodimage}`;
+     }
+     
+     res.status(200).json({ message: 'Food retrieved successfully', food: foodData });
    } catch (error) {
      console.error('Error fetching food:', error);
      res.status(404).json({ error: error.message });
@@ -100,12 +137,7 @@ exports.getFoodsByEvent = async (req, res) => {
      const { id } = req.params;
      const { foodname, quantity, foodprice, fooddescription } = req.body;
      const admin_id = req.user?.user_id; // From JWT token
-     
-     // Handle image from disk storage
-     let newFoodImage = null;
-     if (req.file) {
-       newFoodImage = `/uploads/foods/${req.file.filename}`;
-     }
+     const newFoodImage = req.file ? `/uploads/${req.file.filename}` : null;
  
      // Basic request logging
      console.log('Request body:', req.body);
@@ -113,24 +145,24 @@ exports.getFoodsByEvent = async (req, res) => {
  
      // Validate required fields
      if (!foodname || typeof foodname !== 'string' || foodname.trim() === '') {
-       return res.status(400).json({ error: 'Valid food name is required' });
+       throw new Error('Valid food name is required');
      }
      if (quantity === undefined || quantity === null || isNaN(quantity) || Number(quantity) < 0) {
-       return res.status(400).json({ error: 'Valid non-negative quantity is required' });
+       throw new Error('Valid non-negative quantity is required');
      }
      if (foodprice === undefined || foodprice === null || isNaN(foodprice) || Number(foodprice) < 0) {
-       return res.status(400).json({ error: 'Valid non-negative food price is required' });
+       throw new Error('Valid non-negative food price is required');
      }
      if (!admin_id) {
-       return res.status(401).json({ error: 'Unauthorized: missing admin ID' });
+       throw new Error('Unauthorized: missing admin ID');
      }
  
      const food = await Food.findByPk(id);
      if (!food) {
-       return res.status(404).json({ error: 'Food item not found' });
+       throw new Error('Food item not found');
      }
  
-     await food.update({
+          await food.update({
        foodname: foodname.trim(),
        quantity: parseInt(quantity, 10),
        foodprice: parseFloat(foodprice),
@@ -138,11 +170,22 @@ exports.getFoodsByEvent = async (req, res) => {
        fooddescription: fooddescription ?? food.fooddescription,
        admin_id
      });
- 
-     res.status(200).json({ message: 'Food item updated successfully', food });
+
+     // Refresh the food data to get updated values
+     await food.reload();
+     
+     // Process food to ensure proper image URL
+     const foodData = food.toJSON();
+     
+     // Ensure foodimage has full path if it exists
+     if (foodData.foodimage && !foodData.foodimage.startsWith('http')) {
+       foodData.foodimage = `${req.protocol}://${req.get('host')}${foodData.foodimage}`;
+     }
+
+     res.status(200).json({ message: 'Food item updated successfully', food: foodData });
    } catch (error) {
      console.error('Error updating food:', error);
-     res.status(500).json({ error: 'Internal server error' });
+     res.status(400).json({ error: error.message });
    }
  };
  
