@@ -25,11 +25,17 @@ const isAdmin = require('../middleware/isAdmin');
  *         multipart/form-data:
  *           schema:
  *             type: object
+ *             required:
+ *               - foodname
+ *               - quantity
+ *               - foodprice
+ *               - event_id
  *             properties:
  *               foodname: { type: string, example: Chicken Burger }
  *               quantity: { type: integer, example: 50 }
  *               foodprice: { type: number, example: 12.5 }
  *               fooddescription: { type: string, example: Delicious grilled chicken burger }
+ *               event_id: { type: string, format: uuid, description: Event ID to link food to (required) }
  *               foodimage: { type: string, format: binary }
  *     responses:
  *       201: { description: Food item created successfully }
@@ -72,9 +78,31 @@ router.get('/', foodController.getAllFoods);
  *                 message: { type: string }
  *                 foods: { type: array, items: { type: object } }
  *                 eventId: { type: string }
+ *                 count: { type: integer }
  *       500: { description: Internal server error }
  */
 router.get('/event/:eventId', foodController.getFoodsByEvent);
+
+/**
+ * @swagger
+ * /api/foods/general:
+ *   get:
+ *     summary: Get foods that are not assigned to any specific event (general menu)
+ *     tags: [Foods]
+ *     responses:
+ *       200: 
+ *         description: General foods retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 foods: { type: array, items: { type: object } }
+ *                 count: { type: integer }
+ *       500: { description: Internal server error }
+ */
+router.get('/general', foodController.getGeneralFoods);
 
 /**
  * @swagger
@@ -112,11 +140,17 @@ router.get('/:id', foodController.getFoodById);
  *         multipart/form-data:
  *           schema:
  *             type: object
+ *             required:
+ *               - foodname
+ *               - quantity
+ *               - foodprice
+ *               - event_id
  *             properties:
  *               foodname: { type: string, example: Chicken Burger }
  *               quantity: { type: integer, example: 50 }
  *               foodprice: { type: number, example: 12.5 }
  *               fooddescription: { type: string }
+ *               event_id: { type: string, format: uuid, description: Event ID to link food to (required) }
  *               foodimage: { type: string, format: binary }
  *     responses:
  *       200: { description: Food item updated }
