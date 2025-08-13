@@ -109,12 +109,13 @@ const Food = sequelize.define('Food', {
     quantity: {type: DataTypes.INTEGER,allowNull: false,defaultValue: 0,},
     foodprice: {type: DataTypes.FLOAT,allowNull: false,defaultValue: 0.0,},
     fooddescription: {type: DataTypes.TEXT,allowNull: true,},
+    event_id: {type: DataTypes.UUID,allowNull: false,}, // Link food to specific event (required)
     admin_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'admins',
-        key: 'id'
+        model: 'users',
+        key: 'user_id'
       }
     },
     createdAt: {
@@ -137,6 +138,10 @@ const Food = sequelize.define('Food', {
 
   User.hasMany(Food,{foreignKey: 'admin_id'});
   Food.belongsTo(User, { foreignKey: 'admin_id', as: 'User'});
+
+  // Add association between Food and Event
+  Event.hasMany(Food, { foreignKey: 'event_id', as: 'Foods' });
+  Food.belongsTo(Event, { foreignKey: 'event_id', as: 'Event' });
 
   Venue.hasMany(Event, { foreignKey: 'venue_id' });
   Event.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
