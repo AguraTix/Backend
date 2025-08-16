@@ -1,157 +1,163 @@
-const ticketService = require('../services/ticketService');
+const models = require('../../backend/models/index'); // Import from app.js
+const { Ticket, Event, Venue, User } = models;
 
-// Purchase tickets
-exports.purchaseTickets = async (req, res) => {
-    try {
-        const { categoryId, seatIds } = req.body;
-        const attendeeId = req.user.user_id;
-
-        const tickets = await ticketService.purchaseTickets({
-            categoryId,
-            seatIds
-        }, attendeeId);
-
-        res.status(201).json({
-            message: 'Tickets purchased successfully',
-            tickets
-        });
-    } catch (error) {
-        res.status(400).json({
-            error: error.message
-        });
-    }
-};
-
-// Get user's tickets
-exports.getUserTickets = async (req, res) => {
-    try {
-        const attendeeId = req.user.user_id;
-        const tickets = await ticketService.getUserTickets(attendeeId);
-        
-        res.status(200).json({
-            message: 'Tickets retrieved successfully',
-            tickets
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: error.message
-        });
-    }
-};
-
-// Get ticket by ID
-exports.getTicketById = async (req, res) => {
-    try {
-        const { ticketId } = req.params;
-        const attendeeId = req.user.user_id;
-        const ticket = await ticketService.getTicketById(ticketId, attendeeId);
-        
-        res.status(200).json({
-            message: 'Ticket retrieved successfully',
-            ticket
-        });
-    } catch (error) {
-        res.status(404).json({
-            error: error.message
-        });
-    }
-};
-
-// Validate ticket (for entry)
-exports.validateTicket = async (req, res) => {
-    try {
-        const { qrCode } = req.params;
-        const ticket = await ticketService.validateTicket(qrCode);
-        
-        res.status(200).json({
-            message: 'Ticket is valid',
-            ticket
-        });
-    } catch (error) {
-        res.status(400).json({
-            error: error.message
-        });
-    }
-};
-
-// Use ticket (mark as used)
-exports.useTicket = async (req, res) => {
-    try {
-        const { ticketId } = req.params;
-        const ticket = await ticketService.useTicket(ticketId);
-        
-        res.status(200).json({
-            message: 'Ticket marked as used',
-            ticket
-        });
-    } catch (error) {
-        res.status(400).json({
-            error: error.message
-        });
-    }
-};
-
-// Refund ticket
-exports.refundTicket = async (req, res) => {
-    try {
-        const { ticketId } = req.params;
-        const attendeeId = req.user.user_id;
-        const ticket = await ticketService.refundTicket(ticketId, attendeeId);
-        
-        res.status(200).json({
-            message: 'Ticket refunded successfully',
-            ticket
-        });
-    } catch (error) {
-        res.status(400).json({
-            error: error.message
-        });
-    }
-};
-
-// Get available seats for a ticket category
-exports.getAvailableSeatsForCategory = async (req, res) => {
-    try {
-        const { categoryId } = req.params;
-        const seats = await ticketService.getAvailableSeatsForCategory(categoryId);
-        
-        res.status(200).json({
-            message: 'Available seats retrieved successfully',
-            seats
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: error.message
-        });
-    }
-};
-
-// Get recent tickets with pagination and filtering
-exports.getRecentTickets = async (req, res) => {
-    try {
-        const { limit = 10, offset = 0, attendeeId = null } = req.query;
-        
-        // Validate query parameters
-        const parsedLimit = Math.min(parseInt(limit), 50); // Max 50 tickets per request
-        const parsedOffset = Math.max(parseInt(offset), 0);
-        
-        // If user is authenticated and no attendeeId provided, use the authenticated user's ID
-        let finalAttendeeId = attendeeId;
-        if (!attendeeId && req.user && req.user.user_id) {
-            finalAttendeeId = req.user.user_id;
+class TicketController {
+    constructor() {
+        if (!Ticket || !Event || !Venue || !User) {
+            console.error('One or more models are undefined. Check model initialization in app.js');
+            throw new Error('Models not properly initialized');
         }
-        
-        const result = await ticketService.getRecentTickets(parsedLimit, parsedOffset, finalAttendeeId);
-        
-        res.status(200).json({
-            message: 'Recent tickets retrieved successfully',
-            tickets: result.tickets,
-            pagination: result.pagination
-        });
-    } catch (error) {
-        console.error('Error fetching recent tickets:', error);
-        res.status(500).json({
-            error: error.message
-        });
     }
-}; 
+
+    async getAvailableTickets(req, res) {
+        try {
+            const { eventId } = req.params;
+            const event = await Event.findByPk(eventId, { include: [{ model: Venue, as: 'Venue' }] });
+            if (!event) {
+                return res.status(404).json({ error: 'Event not found' });
+            }
+
+            const tickets = await Ticket.findAll({
+                where: { eventId, status: 'available' }
+            });
+
+            let groupedTickets = [];
+            if (event.Venue.hasSections) {
+                const sections = {};
+                tickets.forEach(ticket => {
+                    if (!sections[ticket.sectionName]) {
+                        sections[ticket.sectionName] = [];
+                    }
+                    sections[ticket.sectionName].push(ticket);
+                });
+                groupedTickets = Object.entries(sections).map(([sectionName, sectionTickets]) => ({
+                    sectionName,
+                    available: sectionTickets.length,
+                    tickets: sectionTickets
+                }));
+            } else {
+                groupedTickets = [{
+                    sectionName: 'General Admission',
+                    available: tickets.length,
+                    tickets
+                }];
+            }
+
+            return res.status(200).json({
+                message: 'Available tickets retrieved successfully',
+                groupedTickets
+            });
+        } catch (error) {
+            console.error('Error fetching available tickets:', error);
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
+        }
+    }
+
+    async bookTicket(req, res) {
+        try {
+            const { ticketId } = req.params;
+            const attendee_id = req.user?.user_id;
+            if (!attendee_id) {
+                return res.status(401).json({ error: 'Unauthorized: No user ID provided' });
+            }
+
+            const ticket = await Ticket.findByPk(ticketId);
+            if (!ticket) {
+                return res.status(404).json({ error: 'Ticket not found' });
+            }
+
+            if (ticket.status !== 'available') {
+                return res.status(400).json({ error: 'Ticket is not available' });
+            }
+
+            ticket.attendee_id = attendee_id;
+            ticket.status = 'sold';
+            await ticket.save();
+
+            return res.status(200).json({
+                message: 'Ticket booked successfully',
+                ticket: {
+                    ticket_id: ticket.ticket_id,
+                    eventId: ticket.eventId,
+                    venueId: ticket.venueId,
+                    sectionName: ticket.sectionName,
+                    seatNumber: ticket.seatNumber,
+                    price: ticket.price,
+                    status: ticket.status,
+                    qrCodeUrl: ticket.qrCodeUrl
+                }
+            });
+        } catch (error) {
+            console.error('Error booking ticket:', error);
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
+        }
+    }
+
+    async getMyTickets(req, res) {
+        try {
+            const attendee_id = req.user?.user_id;
+            if (!attendee_id) {
+                return res.status(401).json({ error: 'Unauthorized: No user ID provided' });
+            }
+
+            const tickets = await Ticket.findAll({
+                where: { attendee_id },
+                include: [
+                    { model: Event, as: 'Event', attributes: ['event_id', 'title', 'date'] },
+                    { model: Venue, as: 'Venue', attributes: ['venue_id', 'name', 'location'] }
+                ]
+            });
+
+            const processedTickets = tickets.map(ticket => ({
+                ...ticket.toJSON(),
+                qrCodeUrl: ticket.qrCodeUrl
+            }));
+
+            return res.status(200).json({
+                message: 'My tickets retrieved successfully',
+                tickets: processedTickets
+            });
+        } catch (error) {
+            console.error('Error fetching my tickets:', error);
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
+        }
+    }
+
+    async cancelTicket(req, res) {
+        try {
+            const { ticketId } = req.params;
+            const attendee_id = req.user?.user_id;
+            if (!attendee_id) {
+                return res.status(401).json({ error: 'Unauthorized: No user ID provided' });
+            }
+
+            const ticket = await Ticket.findByPk(ticketId);
+            if (!ticket) {
+                return res.status(404).json({ error: 'Ticket not found' });
+            }
+
+            if (ticket.attendee_id !== attendee_id) {
+                return res.status(403).json({ error: 'Unauthorized to cancel this ticket' });
+            }
+
+            if (ticket.status !== 'sold') {
+                return res.status(400).json({ error: 'Ticket cannot be cancelled' });
+            }
+
+            ticket.attendee_id = null;
+            ticket.status = 'available';
+            ticket.qrCode = null;
+            ticket.purchaseDate = null;
+            await ticket.save();
+
+            return res.status(200).json({
+                message: 'Ticket cancelled successfully'
+            });
+        } catch (error) {
+            console.error('Error cancelling ticket:', error);
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
+        }
+    }
+}
+
+module.exports = new TicketController();

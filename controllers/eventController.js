@@ -1,5 +1,6 @@
 const eventService = require('../services/eventService');
-const { Event, Venue, User } = require('../models');
+const { Event, Venue, User, Ticket } = require('../models');
+const { v4: uuidv4 } = require('uuid');
 
 // Create a new event
 exports.createEvent = async (req, res) => {
@@ -76,12 +77,16 @@ exports.createEvent = async (req, res) => {
       description,
       date,
       venue_id,
-      admin_id: req.user.user_id, // Use user_id instead of id
+      admin_id: req.user.user_id,
       artist_lineup: parsedArtistLineup,
       event_images: eventImagesData,
       image_url: imageUrl,
       tickets: parsedTickets
     });
+
+    // Generate physical tickets based on venue configuration and ticket types
+    const generatedTickets = await generatePhysicalTickets(event, venue, parsedTickets);
+    await Ticket.bulkCreate(generatedTickets);
 
     // Prepare response (include image paths for frontend)
     const responseEvent = {
@@ -100,7 +105,8 @@ exports.createEvent = async (req, res) => {
       })),
       image_count: event.event_images.length,
       image_url: event.image_url ? `${req.protocol}://${req.get('host')}${event.image_url}` : null,
-      tickets: event.tickets
+      tickets: event.tickets,
+      ticketsCreated: generatedTickets.length
     };
 
     res.status(201).json({
@@ -112,6 +118,50 @@ exports.createEvent = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// Helper function to generate physical tickets
+async function generatePhysicalTickets(event, venue, ticketTypes) {
+  const tickets = [];
+
+  if (venue.hasSections) {
+    // Generate tickets for each section based on ticket types
+    for (const section of venue.sections) {
+      const sectionTicketType = ticketTypes.find(t => t.type.toLowerCase() === section.name.toLowerCase());
+      if (!sectionTicketType) continue; // Skip if no matching ticket type
+
+      for (let i = 1; i <= sectionTicketType.quantity; i++) {
+        if (i > section.capacity) break; // Respect section capacity
+        tickets.push({
+          ticket_id: uuidv4(),
+          eventId: event.event_id,
+          venueId: venue.venue_id,
+          sectionName: section.name,
+          seatNumber: `S${i}`,
+          price: sectionTicketType.price,
+          status: 'available'
+        });
+      }
+    }
+  } else {
+    // Generate general admission tickets based on ticket types
+    for (const ticketType of ticketTypes) {
+      for (let i = 1; i <= ticketType.quantity; i++) {
+        if (i > venue.capacity) break; // Respect venue capacity
+        tickets.push({
+          ticket_id: uuidv4(),
+          eventId: event.event_id,
+          venueId: venue.venue_id,
+          sectionName: null,
+          seatNumber: null,
+          price: ticketType.price,
+          status: 'available'
+        });
+      }
+    }
+  }
+
+  return tickets;
+}
 
 // Get all events
 exports.getAllEvents = async (req, res) => {
@@ -271,7 +321,9 @@ exports.updateEvent = async (req, res) => {
             try {
                 parsedArtistLineup = JSON.parse(artist_lineup);
             } catch (parseError) {
-                parsedArtistLineup = artist_lineup.split(',').map(name => name.trim());
+                parsedArtistLineup = artist_lineupffee
+                .split(',')
+                .map(name => name.trim());
             }
         }
 
