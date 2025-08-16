@@ -7,12 +7,10 @@ const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
 const venueRoutes = require('./routes/venueRoutes');
 const eventRoutes = require('./routes/eventRoutes');
-const sectionRoutes = require('./routes/sectionRoutes');
-const seatRoutes = require('./routes/seatRoutes');
-const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const passwordResetRoutes = require('./routes/passwordResetRoutes');
 const foodRoutes = require('./routes/foodRoutes');
+const foodOrderRoutes = require('./routes/foodOrderRoutes');
 const path = require('path');
 const fs = require('fs');
 
@@ -208,12 +206,10 @@ console.log('Configuration loaded:', {
 app.use('/api/users', userRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/events', eventRoutes);
-app.use('/api/sections', sectionRoutes);
-app.use('/api/seats', seatRoutes);
-app.use('/api/ticket-categories', ticketCategoryRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/password-reset', passwordResetRoutes);
 app.use('/api/foods', foodRoutes);
+app.use('/api/food-orders', foodOrderRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);

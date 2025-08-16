@@ -2,177 +2,143 @@
  * @swagger
  * tags:
  *   name: Tickets
- *   description: Ticket management endpoints
+ *   description: Ticket management endpoints for users
  */
 const express = require('express');
 const router = express.Router();
+const models = require('../models/index');
+ // Import from app.js
 const ticketController = require('../controllers/ticketController');
-const authenticate = require('../middleware/authenticate');
+const isAuthenticated = require('../middleware/authenticate'); // Assume this middleware exists for user auth
+const { Ticket } = require('../models');
 
 /**
  * @swagger
- * /api/tickets/purchase:
+ * /api/tickets/event/{eventId}:
+ *   get:
+ *     summary: Get available tickets for an event
+ *     tags: [Tickets]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The event ID
+ *     responses:
+ *       200:
+ *         description: Available tickets retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 groupedTickets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sectionName: { type: string }
+ *                       available: { type: integer }
+ *                       tickets:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             ticket_id: { type: string }
+ *                             sectionName: { type: string }
+ *                             seatNumber: { type: string }
+ *                             price: { type: number }
+ *       404: { description: Event not found }
+ *       500: { description: Internal server error }
+ */
+router.get('/event/:eventId', ticketController.getAvailableTickets);
+
+/**
+ * @swagger
+ * /api/tickets/{ticketId}/book:
  *   post:
- *     summary: Purchase tickets
+ *     summary: Book a ticket
  *     tags: [Tickets]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               categoryId: { type: string }
- *               seatIds:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       201: { description: Tickets purchased successfully }
- *       400: { description: Bad request }
- *       401: { description: Unauthorized }
- */
-router.post('/purchase', authenticate, ticketController.purchaseTickets);
-
-/**
- * @swagger
- * /api/tickets/my-tickets:
- *   get:
- *     summary: Get user's tickets
- *     tags: [Tickets]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200: { description: User's tickets retrieved }
- *       401: { description: Unauthorized }
- */
-router.get('/my-tickets', authenticate, ticketController.getUserTickets);
-
-/**
- * @swagger
- * /api/tickets/recent:
- *   get:
- *     summary: Get recent tickets with pagination and filtering
- *     tags: [Tickets]
  *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *           maximum: 50
- *         description: Number of tickets to return (max 50)
- *       - in: query
- *         name: offset
- *         schema:
- *           type: integer
- *           default: 0
- *         description: Number of tickets to skip for pagination
- *       - in: query
- *         name: attendeeId
+ *       - in: path
+ *         name: ticketId
+ *         required: true
  *         schema:
  *           type: string
- *           format: uuid
- *         description: Filter tickets by specific attendee ID (optional)
+ *         description: The ticket ID to book
  *     responses:
  *       200:
- *         description: Recent tickets retrieved successfully
+ *         description: Ticket booked successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                 tickets:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       ticket_id: { type: string, format: uuid }
- *                       qr_code: { type: string }
- *                       status: { type: string }
- *                       createdAt: { type: string, format: date-time }
- *                       TicketCategory: { type: object }
- *                       Seat: { type: object }
- *                       Attendee: { type: object }
- *                 pagination:
+ *                 message: { type: string }
+ *                 ticket:
  *                   type: object
  *                   properties:
- *                     total: { type: integer }
- *                     limit: { type: integer }
- *                     offset: { type: integer }
- *                     hasMore: { type: boolean }
- *       500:
- *         description: Internal server error
+ *                     ticket_id: { type: string }
+ *                     eventId: { type: string }
+ *                     venueId: { type: string }
+ *                     sectionName: { type: string }
+ *                     seatNumber: { type: string }
+ *                     price: { type: number }
+ *                     status: { type: string }
+ *                     qrCodeUrl: { type: string }
+ *       400: { description: Ticket not available }
+ *       401: { description: Unauthorized }
+ *       404: { description: Ticket not found }
+ *       500: { description: Internal server error }
  */
-router.get('/recent', ticketController.getRecentTickets);
+router.post('/:ticketId/book', isAuthenticated, ticketController.bookTicket);
 
 /**
  * @swagger
- * /api/tickets/recent/user:
+ * /api/tickets/my:
  *   get:
- *     summary: Get recent tickets for the authenticated user
+ *     summary: Get my booked tickets
  *     tags: [Tickets]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *           maximum: 50
- *         description: Number of tickets to return (max 50)
- *       - in: query
- *         name: offset
- *         schema:
- *           type: integer
- *           default: 0
- *         description: Number of tickets to skip for pagination
  *     responses:
  *       200:
- *         description: User's recent tickets retrieved successfully
+ *         description: My tickets retrieved
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
+ *                 message: { type: string }
  *                 tickets:
  *                   type: array
  *                   items:
  *                     type: object
  *                     properties:
- *                       ticket_id: { type: string, format: uuid }
- *                       qr_code: { type: string }
+ *                       ticket_id: { type: string }
+ *                       eventId: { type: string }
+ *                       venueId: { type: string }
+ *                       sectionName: { type: string }
+ *                       seatNumber: { type: string }
+ *                       price: { type: number }
  *                       status: { type: string }
- *                       createdAt: { type: string, format: date-time }
- *                       TicketCategory: { type: object }
- *                       Seat: { type: object }
- *                       Attendee: { type: object }
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     total: { type: integer }
- *                     limit: { type: integer }
- *                     offset: { type: integer }
- *                     hasMore: { type: boolean }
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Internal server error
+ *                       qrCodeUrl: { type: string }
+ *                       Event: { type: object }
+ *                       Venue: { type: object }
+ *       401: { description: Unauthorized }
+ *       500: { description: Internal server error }
  */
-router.get('/recent/user', authenticate, ticketController.getRecentTickets);
+router.get('/my', isAuthenticated, ticketController.getMyTickets);
 
 /**
  * @swagger
- * /api/tickets/{ticketId}:
- *   get:
- *     summary: Get ticket by ID
+ * /api/tickets/{ticketId}/cancel:
+ *   post:
+ *     summary: Cancel a booked ticket
  *     tags: [Tickets]
  *     security:
  *       - bearerAuth: []
@@ -182,41 +148,23 @@ router.get('/recent/user', authenticate, ticketController.getRecentTickets);
  *         required: true
  *         schema:
  *           type: string
- *         description: The ticket ID
+ *         description: The ticket ID to cancel
  *     responses:
- *       200: { description: Ticket found }
+ *       200: { description: Ticket cancelled successfully }
+ *       400: { description: Ticket cannot be cancelled }
  *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
  *       404: { description: Ticket not found }
+ *       500: { description: Internal server error }
  */
-router.get('/:ticketId', authenticate, ticketController.getTicketById);
+router.post('/:ticketId/cancel', isAuthenticated, ticketController.cancelTicket);
 
 /**
  * @swagger
- * /api/tickets/validate/{qrCode}:
+ * /api/tickets/{ticketId}/qrcode:
  *   get:
- *     summary: Validate ticket by QR code
+ *     summary: Get QR code for a ticket
  *     tags: [Tickets]
- *     parameters:
- *       - in: path
- *         name: qrCode
- *         required: true
- *         schema:
- *           type: string
- *         description: The ticket QR code
- *     responses:
- *       200: { description: Ticket is valid }
- *       400: { description: Invalid ticket }
- */
-router.get('/validate/:qrCode', ticketController.validateTicket);
-
-/**
- * @swagger
- * /api/tickets/{ticketId}/use:
- *   put:
- *     summary: Mark ticket as used
- *     tags: [Tickets]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: ticketId
@@ -225,53 +173,35 @@ router.get('/validate/:qrCode', ticketController.validateTicket);
  *           type: string
  *         description: The ticket ID
  *     responses:
- *       200: { description: Ticket marked as used }
- *       400: { description: Bad request }
- *       401: { description: Unauthorized }
- *       404: { description: Ticket not found }
+ *       200: { description: QR code image }
+ *       404: { description: Ticket not found or QR not available }
+ *       500: { description: Failed to serve QR code }
  */
-router.put('/:ticketId/use', authenticate, ticketController.useTicket);
+router.get('/:ticketId/qrcode', async (req, res) => {
+    try {
+        const { ticketId } = req.params;
+        
+        const ticket = await Ticket.findByPk(ticketId, {
+            attributes: ['ticket_id', 'qrCode', 'status']
+        });
 
-/**
- * @swagger
- * /api/tickets/{ticketId}/refund:
- *   put:
- *     summary: Refund ticket
- *     tags: [Tickets]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: ticketId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ticket ID
- *     responses:
- *       200: { description: Ticket refunded successfully }
- *       400: { description: Bad request }
- *       401: { description: Unauthorized }
- *       404: { description: Ticket not found }
- */
-router.put('/:ticketId/refund', authenticate, ticketController.refundTicket);
+        if (!ticket || !ticket.qrCode) {
+            return res.status(404).json({ error: 'QR code not available' });
+        }
 
-/**
- * @swagger
- * /api/ticket-categories/{categoryId}/available-seats:
- *   get:
- *     summary: Get available seats for a ticket category
- *     tags: [Tickets]
- *     parameters:
- *       - in: path
- *         name: categoryId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ticket category ID
- *     responses:
- *       200: { description: Available seats for the category }
- *       404: { description: Ticket category not found }
- */
-router.get('/categories/:categoryId/available-seats', ticketController.getAvailableSeatsForCategory);
+        const base64Data = ticket.qrCode.split(';base64,').pop();
+        const img = Buffer.from(base64Data, 'base64');
 
-module.exports = router; 
+        res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Content-Length': img.length
+        });
+        
+        res.end(img);
+    } catch (error) {
+        console.error('Error serving QR code:', error);
+        res.status(500).json({ error: 'Failed to serve QR code' });
+    }
+});
+
+module.exports = router;

@@ -1,4 +1,5 @@
 const {Sequelize, DataTypes} = require('sequelize');
+const QRCode = require('qrcode');
 
 module.exports = (sequelize) => {
 
@@ -6,9 +7,7 @@ module.exports = (sequelize) => {
     const User = sequelize.define('User',{
         user_id:{type:DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey :true},
         email:{type:DataTypes.STRING, allowNull:false, unique:true},
-
         phone_number: { type: DataTypes.STRING, unique: true },
-
         name: { type: DataTypes.STRING, allowNull: false },
         profile_photo: { type: DataTypes.STRING },
         role: {type: DataTypes.STRING,defaultValue: 'Attendee',allowNull: false,
@@ -50,145 +49,324 @@ module.exports = (sequelize) => {
 
     //Venue model
     const Venue = sequelize.define('Venue', {
-    venue_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    admin_id: { type: DataTypes.UUID, allowNull: false },
-    name: { type: DataTypes.STRING, allowNull: false },
-    location: { type: DataTypes.STRING, allowNull: false },
-    map_data: { type: DataTypes.JSON },
-    capacity: { type: DataTypes.INTEGER, allowNull: false },
-
-    }, { tableName: 'venues' });
-
-
-    //Section model
-    const Section = sequelize.define('Section', {
-        section_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-        venue_id: { type: DataTypes.UUID, allowNull: false },
-        parent_section_id: { type: DataTypes.UUID, allowNull: true },
-        name: { type: DataTypes.STRING, allowNull: false },
-        description: { type: DataTypes.TEXT },
-        seat_map: { type: DataTypes.JSON }
-    }, { tableName: 'sections' });
-
-    //Seat model
-    const Seat = sequelize.define('Seat', {
-        seat_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-        section_id: { type: DataTypes.UUID, allowNull: false },
-        number: { type: DataTypes.INTEGER, allowNull: false },
-        status: { 
-            type: DataTypes.ENUM('Available', 'Unavailable', 'Sold Out', 'Selected'),
-            defaultValue: 'Available'
+        venue_id: { 
+            type: DataTypes.UUID, 
+            defaultValue: DataTypes.UUIDV4, 
+            primaryKey: true 
+        },
+        name: { 
+            type: DataTypes.STRING, 
+            allowNull: false 
+        },
+        location: { 
+            type: DataTypes.STRING, 
+            allowNull: false 
+        },
+        hasSections: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
+        capacity: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            validate: {
+                min: 1
+            }
+        },
+        sections: {
+            type: DataTypes.JSON,
+            allowNull: true,
+            defaultValue: [],
+            validate: {
+                isValidSections(value) {
+                    if (this.hasSections && (!value || !Array.isArray(value) || value.length === 0)) {
+                        throw new Error('Sections must be provided when hasSections is true');
+                    }
+                    if (this.hasSections) {
+                        const totalSectionCapacity = value.reduce((sum, section) => sum + (section.capacity || 0), 0);
+                        if (totalSectionCapacity !== this.capacity) {
+                            throw new Error('Sum of section capacities must equal venue capacity');
+                        }
+                    }
+                }
+            }
+        },
+        admin_id: { 
+            type: DataTypes.UUID, 
+            allowNull: false,
+            references: {
+                model: 'users',
+                key: 'user_id'
+            }
         }
-    }, { tableName: 'seats' });
+    }, { 
+        tableName: 'venues',
+        timestamps: true,
+        underscored: true
+    });
 
-    //TicketCategory model
-    const TicketCategory = sequelize.define('TicketCategory', {
-        category_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-        event_id: { type: DataTypes.UUID, allowNull: false },
-        name: { type: DataTypes.STRING, allowNull: false },
-        price: { type: DataTypes.INTEGER, allowNull: false },
-        section_id: { type: DataTypes.UUID, allowNull: false }
-    }, { tableName: 'ticket_categories' });
+
 
     //Ticket model
+     // Ticket model (unchanged)
     const Ticket = sequelize.define('Ticket', {
         ticket_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-        category_id: { type: DataTypes.UUID, allowNull: false },
-        attendee_id: { type: DataTypes.UUID, allowNull: false },
-        seat_id: { type: DataTypes.UUID, allowNull: false },
-        qr_code: { type: DataTypes.STRING, allowNull: false, unique: true },
+        eventId: { 
+            type: DataTypes.UUID, 
+            allowNull: false,
+            references: {
+                model: 'events',
+                key: 'event_id'
+            }
+        },
+        venueId: { 
+            type: DataTypes.UUID, 
+            allowNull: false,
+            references: {
+                model: 'venues',
+                key: 'venue_id'
+            }
+        },
+        sectionName: { 
+            type: DataTypes.STRING, 
+            allowNull: true 
+        },
+        seatNumber: { 
+            type: DataTypes.STRING, 
+            allowNull: true 
+        },
+        price: { 
+            type: DataTypes.FLOAT, 
+            allowNull: false,
+            validate: { min: 0 }
+        },
         status: { 
-            type: DataTypes.ENUM('Active', 'Used', 'Refunded'),
-            defaultValue: 'Active'
+            type: DataTypes.ENUM('available', 'reserved', 'sold', 'used', 'cancelled'),
+            defaultValue: 'available'
+        },
+        attendee_id: { 
+            type: DataTypes.UUID, 
+            allowNull: true,
+            references: { model: 'users', key: 'user_id' }
+        },
+        qrCode: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        purchaseDate: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+        qrCodeUrl: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                if (!this.qrCode) return null;
+                return `/api/tickets/${this.ticket_id}/qrcode`;
+            }
         }
-    }, { tableName: 'tickets' });
-const Food = sequelize.define('Food', {
-    food_id: {type: DataTypes.UUID,defaultValue: DataTypes.UUIDV4,primaryKey: true,},
-    foodname: {type: DataTypes.STRING,allowNull: false,},
-    foodimage: {type: DataTypes.TEXT,allowNull: true,},
-    quantity: {type: DataTypes.INTEGER,allowNull: false,defaultValue: 0,},
-    foodprice: {type: DataTypes.FLOAT,allowNull: false,defaultValue: 0.0,},
-    fooddescription: {type: DataTypes.TEXT,allowNull: true,},
-    event_id: {type: DataTypes.UUID,allowNull: false,}, // Link food to specific event (required)
-    admin_id: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'user_id'
-      }
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      field: 'createdat' // Map to lowercase column
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      field: 'updatedat' // Map to lowercase column
-    }
-    }, {tableName: 'foods'});
+    }, { 
+        tableName: 'tickets',
+        hooks: {
+            beforeCreate: async (ticket) => {
+                if (ticket.status === 'sold' && !ticket.qrCode) {
+                    await ticket.generateQRCode();
+                }
+            },
+            beforeUpdate: async (ticket, { fields }) => {
+                if (fields.includes('status') && ticket.status === 'sold' && !ticket.qrCode) {
+                    await ticket.generateQRCode();
+                }
+            }
+        }
+    });
 
-  User.hasMany(Event, { foreignKey: 'admin_id' });
-  Event.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
+    Ticket.prototype.generateQRCode = async function() {
+        try {
+            const qrData = {
+                ticketId: this.ticket_id,
+                eventId: this.eventId,
+                venueId: this.venueId,
+                section: this.sectionName,
+                seat: this.seatNumber,
+                price: this.price,
+                purchaseDate: new Date().toISOString()
+            };
 
-  User.hasMany(Venue, { foreignKey: 'admin_id' });
-  Venue.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
+            const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+                errorCorrectionLevel: 'H',
+                type: 'image/png',
+                margin: 2,
+                scale: 8
+            });
 
-  User.hasMany(Food,{foreignKey: 'admin_id'});
-  Food.belongsTo(User, { foreignKey: 'admin_id', as: 'User'});
+            this.qrCode = qrCodeDataUrl;
+            this.purchaseDate = new Date();
+            
+            return qrCodeDataUrl;
+        } catch (error) {
+            console.error('Error generating QR code:', error);
+            throw new Error('Failed to generate QR code');
+        }
+    };
 
-  // Add association between Food and Event
-  Event.hasMany(Food, { foreignKey: 'event_id', as: 'Foods' });
-  Food.belongsTo(Event, { foreignKey: 'event_id', as: 'Event' });
+    const Food = sequelize.define('Food', {
+        food_id: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true
+        },
+        foodname: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        foodimage: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        quantity: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+        foodprice: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+            defaultValue: 0.0
+        },
+        fooddescription: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        event_id: {
+            type: DataTypes.UUID,
+            allowNull: false
+        },
+        admin_id: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            references: {
+                model: 'users',
+                key: 'user_id'
+            }
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: 'createdat'
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: 'updatedat'
+        }
+    }, {
+        tableName: 'foods'
+    });
 
-  Venue.hasMany(Event, { foreignKey: 'venue_id' });
-  Event.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
+    // New FoodOrder model for food ordering system
+    const FoodOrder = sequelize.define('FoodOrder', {
+        order_id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+        user_id: { 
+            type: DataTypes.UUID, 
+            allowNull: false,
+            references: {
+                model: 'users',
+                key: 'user_id'
+            }
+        },
+        food_id: { 
+            type: DataTypes.UUID, 
+            allowNull: false,
+            references: {
+                model: 'foods',
+                key: 'food_id'
+            }
+        },
+        event_id: { 
+            type: DataTypes.UUID, 
+            allowNull: false,
+            references: {
+                model: 'events',
+                key: 'event_id'
+            }
+        },
+        order_status: { 
+            type: DataTypes.ENUM('Pending', 'Confirmed','Cancelled'),
+            defaultValue: 'Pending'
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: 'createdat'
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: 'updatedat'
+        }
+    }, { 
+        tableName: 'food_orders',
+        indexes: [
+            {
+                fields: ['user_id']
+            },
+            {
+                fields: ['event_id']
+            },
+            {
+                fields: ['order_status']
+            },
+            {
+                fields: ['createdAt']
+            }
+        ]
+    });
 
     User.hasMany(Event, { foreignKey: 'admin_id' });
-    Event.belongsTo(User, { foreignKey: 'admin_id' });
+    Event.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
 
     User.hasMany(Venue, { foreignKey: 'admin_id' });
-    Venue.belongsTo(User, { foreignKey: 'admin_id' });
+    Venue.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });
+
+    User.hasMany(Food,{foreignKey: 'admin_id'});
+    Food.belongsTo(User, { foreignKey: 'admin_id', as: 'User'});
+
+    // Add association between Food and Event
+    Event.hasMany(Food, { foreignKey: 'event_id', as: 'Foods' });
+    Food.belongsTo(Event, { foreignKey: 'event_id', as: 'Event' });
+
+    // New associations for FoodOrder
+    User.hasMany(FoodOrder, { foreignKey: 'user_id', as: 'FoodOrders' });
+    FoodOrder.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
+    
+    Food.hasMany(FoodOrder, { foreignKey: 'food_id', as: 'FoodOrders' });
+    FoodOrder.belongsTo(Food, { foreignKey: 'food_id', as: 'Food' });
+    
+    Event.hasMany(FoodOrder, { foreignKey: 'event_id', as: 'FoodOrders' });
+    FoodOrder.belongsTo(Event, { foreignKey: 'event_id', as: 'Event' });
 
     Venue.hasMany(Event, { foreignKey: 'venue_id' });
-    Event.belongsTo(Venue, { foreignKey: 'venue_id' });
-
-  Venue.hasMany(Section, { foreignKey: 'venue_id' });
-  Section.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
+    Event.belongsTo(Venue, { foreignKey: 'venue_id', as: 'Venue' });
 
 
-  Section.hasMany(Section, { foreignKey: 'parent_section_id', as: 'SubSections' });
-  Section.belongsTo(Section, { foreignKey: 'parent_section_id', as: 'ParentSection' });
+    Event.hasMany(Ticket, { foreignKey: 'eventId' });
+    Ticket.belongsTo(Event, { foreignKey: 'eventId' });
 
-  Section.hasMany(Seat, { foreignKey: 'section_id' });
-  Seat.belongsTo(Section, { foreignKey: 'section_id', as: 'Section' });
+    Venue.hasMany(Ticket, { foreignKey: 'venueId' });
+    Ticket.belongsTo(Venue, { foreignKey: 'venueId' });
 
-  Event.hasMany(TicketCategory, { foreignKey: 'event_id' });
-  TicketCategory.belongsTo(Event, { foreignKey: 'event_id', as: 'Event' });
+    User.hasMany(Ticket, { foreignKey: 'attendee_id' });
+    Ticket.belongsTo(User, { foreignKey: 'attendee_id', as: 'User' });
 
-  Section.hasMany(TicketCategory, { foreignKey: 'section_id' });
-  TicketCategory.belongsTo(Section, { foreignKey: 'section_id', as: 'Section' });
 
-  TicketCategory.hasMany(Ticket, { foreignKey: 'category_id' });
-  Ticket.belongsTo(TicketCategory, { foreignKey: 'category_id', as: 'TicketCategory' });
-
-  User.hasMany(Ticket, { foreignKey: 'attendee_id' });
-  Ticket.belongsTo(User, { foreignKey: 'attendee_id', as: 'User' });
-
-  Seat.hasMany(Ticket, { foreignKey: 'seat_id' });
-  Ticket.belongsTo(Seat, { foreignKey: 'seat_id', as: 'Seat' });
-
-  return {
-    User,
-    Event,
-    Venue,
-    Section,
-    Seat,
-    TicketCategory,
-    Ticket,
-    Food
-  };
+    return {
+        User,
+        Event,
+        Venue,
+        Ticket,
+        Food,
+        FoodOrder
+    };
 
 };

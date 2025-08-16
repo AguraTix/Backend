@@ -9,6 +9,8 @@ const router = express.Router();
 const eventController = require('../controllers/eventController');
 const isAdmin = require('../middleware/isAdmin');
 const { uploadEventImages, handleUploadError } = require('../middleware/imageUpload');
+const { Ticket } = require('../models');
+
 /**
  * @swagger
  * /api/events:
@@ -92,6 +94,7 @@ const { uploadEventImages, handleUploadError } = require('../middleware/imageUpl
  *                           filename: { type: string }
  *                           mimetype: { type: string }
  *                           size: { type: integer }
+ *                           path: { type: string }
  *                     image_count: { type: integer }
  *                     image_url: { type: string }
  *                     tickets:
@@ -102,6 +105,7 @@ const { uploadEventImages, handleUploadError } = require('../middleware/imageUpl
  *                           type: { type: string, enum: ['Regular', 'VIP', 'VVIP'] }
  *                           price: { type: number }
  *                           quantity: { type: integer }
+ *                     ticketsCreated: { type: integer }
  *       400:
  *         description: Invalid input
  *       401:
@@ -334,7 +338,7 @@ router.delete('/:eventId', isAdmin, eventController.deleteEvent);
  *         description: The venue ID
  *     responses:
  *       200: { description: List of events for the venue }
- *       404: { description: Venue not found }
+ *       400: { description: Bad request }
  */
 router.get('/venue/:venueId', eventController.getEventsByVenue);
 
@@ -362,10 +366,60 @@ router.get('/venue/:venueId', eventController.getEventsByVenue);
  *                 message: { type: string }
  *                 event_id: { type: string }
  *                 event_images: { type: array, description: "Array of image objects with base64 data" }
+ *                 image_url: { type: string }
  *                 image_count: { type: number }
  *       404: { description: Event not found }
  *       400: { description: Bad request }
  */
 router.get('/:eventId/images', eventController.getEventImages);
+
+/**
+ * @swagger
+ * /api/events/tickets/{ticketId}/qrcode:
+ *   get:
+ *     summary: Get QR code for a ticket
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: ticketId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ticket ID
+ *     responses:
+ *       200: { description: QR code image }
+ *       404: { description: Ticket not found }
+ *       500: { description: Failed to serve QR code }
+ */
+router.get('/tickets/:ticketId/qrcode', async (req, res) => {
+    try {
+        const { ticketId } = req.params;
+        
+        const ticket = await Ticket.findByPk(ticketId, {
+            attributes: ['ticket_id', 'qrCode', 'status']
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+
+        if (!ticket.qrCode) {
+            return res.status(404).json({ error: 'QR code not available for this ticket' });
+        }
+
+        const base64Data = ticket.qrCode.split(';base64,').pop();
+        const img = Buffer.from(base64Data, 'base64');
+
+        res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Content-Length': img.length
+        });
+        
+        return res.end(img);
+    } catch (error) {
+        console.error('Error serving QR code:', error);
+        res.status(500).json({ error: 'Failed to serve QR code', details: error.message });
+    }
+});
 
 module.exports = router;

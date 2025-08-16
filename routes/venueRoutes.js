@@ -26,8 +26,15 @@ const isAdmin = require('../middleware/isAdmin');
  *             properties:
  *               name: { type: string }
  *               location: { type: string }
- *               map_data: { type: object }
+ *               hasSections: { type: boolean }
  *               capacity: { type: integer }
+ *               sections: 
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name: { type: string }
+ *                     capacity: { type: integer }
  *     responses:
  *       201: { description: Venue created }
  *       400: { description: Bad request }
@@ -43,6 +50,7 @@ router.post('/', isAdmin, venueController.createVenue);
  *     tags: [Venues]
  *     responses:
  *       200: { description: List of venues }
+ *       500: { description: Server error }
  */
 router.get('/', venueController.getAllVenues);
 
@@ -62,6 +70,7 @@ router.get('/', venueController.getAllVenues);
  *     responses:
  *       200: { description: Venue found }
  *       404: { description: Venue not found }
+ *       500: { description: Server error }
  */
 router.get('/:venueId', venueController.getVenueById);
 
@@ -89,8 +98,15 @@ router.get('/:venueId', venueController.getVenueById);
  *             properties:
  *               name: { type: string }
  *               location: { type: string }
- *               map_data: { type: object }
+ *               hasSections: { type: boolean }
  *               capacity: { type: integer }
+ *               sections: 
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name: { type: string }
+ *                     capacity: { type: integer }
  *     responses:
  *       200: { description: Venue updated }
  *       400: { description: Bad request }
@@ -122,4 +138,4 @@ router.put('/:venueId', isAdmin, venueController.updateVenue);
  */
 router.delete('/:venueId', isAdmin, venueController.deleteVenue);
 
-module.exports = router; 
+module.exports = router;
