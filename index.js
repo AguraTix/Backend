@@ -11,6 +11,7 @@ const ticketRoutes = require('./routes/ticketRoutes');
 const passwordResetRoutes = require('./routes/passwordResetRoutes');
 const foodRoutes = require('./routes/foodRoutes');
 const foodOrderRoutes = require('./routes/foodOrderRoutes');
+const googleRoutes = require('./routes/googleRoutes')
 const path = require('path');
 const fs = require('fs');
 
@@ -210,6 +211,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/password-reset', passwordResetRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/food-orders', foodOrderRoutes);
+app.use('/api/auth', googleRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
