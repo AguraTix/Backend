@@ -20,6 +20,22 @@ exports.createEvent = async (req, res) => {
       return res.status(400).json({ error: 'Invalid venue_id' });
     }
 
+    // Validate venue sections structure if venue has sections
+    if (venue.hasSections) {
+      if (!venue.sections || !Array.isArray(venue.sections) || venue.sections.length === 0) {
+        return res.status(400).json({ error: 'Venue has sections enabled but no sections are defined' });
+      }
+      
+      for (const section of venue.sections) {
+        if (!section.name || !section.capacity) {
+          return res.status(400).json({ error: 'Each venue section must have a name and capacity' });
+        }
+        if (typeof section.capacity !== 'number' || section.capacity <= 0) {
+          return res.status(400).json({ error: 'Section capacity must be a positive number' });
+        }
+      }
+    }
+
     // Parse artist_lineup
     let parsedArtistLineup = artist_lineup;
     if (typeof artist_lineup === 'string') {
@@ -42,17 +58,65 @@ exports.createEvent = async (req, res) => {
       parsedTickets = tickets;
     }
 
-    // Validate tickets
-    const validTicketTypes = ['Regular', 'VIP', 'VVIP'];
-    for (const ticket of parsedTickets) {
-      if (!validTicketTypes.includes(ticket.type)) {
-        return res.status(400).json({ error: `Invalid ticket type: ${ticket.type}. Must be Regular, VIP, or VVIP` });
+    // Validate tickets based on venue configuration
+    if (venue.hasSections) {
+      // For venues with sections, validate that ticket types match section names
+      const sectionNames = venue.sections.map(section => section.name);
+      const ticketTypeNames = parsedTickets.map(ticket => ticket.type);
+      
+      // Check if all ticket types correspond to existing sections
+      for (const ticket of parsedTickets) {
+        if (!sectionNames.includes(ticket.type)) {
+          return res.status(400).json({ 
+            error: `Invalid ticket type: ${ticket.type}. Must match one of the venue sections: ${sectionNames.join(', ')}` 
+          });
+        }
       }
-      if (typeof ticket.price !== 'number' || ticket.price < 0) {
-        return res.status(400).json({ error: 'Ticket price must be a non-negative number' });
+      
+      // Check if all sections have corresponding ticket types
+      for (const sectionName of sectionNames) {
+        if (!ticketTypeNames.includes(sectionName)) {
+          return res.status(400).json({ 
+            error: `Missing ticket type for section: ${sectionName}. All venue sections must have corresponding ticket types.` 
+          });
+        }
       }
-      if (typeof ticket.quantity !== 'number' || ticket.quantity < 0 || !Number.isInteger(ticket.quantity)) {
-        return res.status(400).json({ error: 'Ticket quantity must be a non-negative integer' });
+      
+      // Validate ticket quantities against section capacities
+      for (const ticket of parsedTickets) {
+        const correspondingSection = venue.sections.find(section => section.name === ticket.type);
+        if (ticket.quantity > correspondingSection.capacity) {
+          return res.status(400).json({ 
+            error: `Ticket quantity (${ticket.quantity}) for ${ticket.type} exceeds section capacity (${correspondingSection.capacity})` 
+          });
+        }
+        if (typeof ticket.price !== 'number' || ticket.price < 0) {
+          return res.status(400).json({ error: 'Ticket price must be a non-negative number' });
+        }
+        if (typeof ticket.quantity !== 'number' || ticket.quantity < 0 || !Number.isInteger(ticket.quantity)) {
+          return res.status(400).json({ error: 'Ticket quantity must be a non-negative integer' });
+        }
+      }
+    } else {
+      // For venues without sections, use the original validation
+      const validTicketTypes = ['Regular', 'VIP', 'VVIP'];
+      for (const ticket of parsedTickets) {
+        if (!validTicketTypes.includes(ticket.type)) {
+          return res.status(400).json({ error: `Invalid ticket type: ${ticket.type}. Must be Regular, VIP, or VVIP` });
+        }
+        if (typeof ticket.price !== 'number' || ticket.price < 0) {
+          return res.status(400).json({ error: 'Ticket price must be a non-negative number' });
+        }
+        if (typeof ticket.quantity !== 'number' || ticket.quantity < 0 || !Number.isInteger(ticket.quantity)) {
+          return res.status(400).json({ error: 'Ticket quantity must be a non-negative integer' });
+        }
+        // Check if total tickets don't exceed venue capacity
+        const totalTickets = parsedTickets.reduce((sum, t) => sum + t.quantity, 0);
+        if (totalTickets > venue.capacity) {
+          return res.status(400).json({ 
+            error: `Total ticket quantity (${totalTickets}) exceeds venue capacity (${venue.capacity})` 
+          });
+        }
       }
     }
 
@@ -126,17 +190,22 @@ async function generatePhysicalTickets(event, venue, ticketTypes) {
   if (venue.hasSections) {
     // Generate tickets for each section based on ticket types
     for (const section of venue.sections) {
-      const sectionTicketType = ticketTypes.find(t => t.type.toLowerCase() === section.name.toLowerCase());
-      if (!sectionTicketType) continue; // Skip if no matching ticket type
+      const sectionTicketType = ticketTypes.find(t => t.type === section.name);
+      if (!sectionTicketType) {
+        console.warn(`No ticket type found for section: ${section.name}`);
+        continue;
+      }
 
-      for (let i = 1; i <= sectionTicketType.quantity; i++) {
-        if (i > section.capacity) break; // Respect section capacity
+      // Generate tickets up to the specified quantity, but not exceeding section capacity
+      const ticketsToGenerate = Math.min(sectionTicketType.quantity, section.capacity);
+      
+      for (let i = 1; i <= ticketsToGenerate; i++) {
         tickets.push({
           ticket_id: uuidv4(),
           eventId: event.event_id,
           venueId: venue.venue_id,
           sectionName: section.name,
-          seatNumber: `S${i}`,
+          seatNumber: `${section.name}-${i}`,
           price: sectionTicketType.price,
           status: 'available'
         });
