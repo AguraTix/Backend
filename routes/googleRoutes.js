@@ -5,13 +5,11 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const { User } = require('../models');
 
-// Validate JWT secret
 if (!process.env.JWT_SECRET) {
   console.error('JWT_SECRET environment variable is required for Google OAuth');
   throw new Error('JWT_SECRET is not configured');
 }
 
-// Start Google OAuth flow
 router.get('/google', (req, res, next) => {
   console.log('Starting Google OAuth flow...');
   console.log('Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
@@ -24,7 +22,6 @@ router.get('/google', (req, res, next) => {
   })(req, res, next);
 });
 
-// Custom Google OAuth callback that handles timeouts better
 router.get('/google/callback', async (req, res) => {
   console.log('Google OAuth callback received');
   console.log('Query parameters:', req.query);
@@ -39,7 +36,7 @@ router.get('/google/callback', async (req, res) => {
   }
 
   try {
-    // Exchange authorization code for access token
+
     const tokenData = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
@@ -52,7 +49,7 @@ router.get('/google/callback', async (req, res) => {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      timeout: 15000 // 15 second timeout
+      timeout: 15000 
     });
 
     const { access_token } = tokenResponse.data;
@@ -63,7 +60,7 @@ router.get('/google/callback', async (req, res) => {
       headers: {
         'Authorization': `Bearer ${access_token}`
       },
-      timeout: 15000 // 15 second timeout
+      timeout: 15000 
     });
 
     const profile = profileResponse.data;
@@ -73,7 +70,7 @@ router.get('/google/callback', async (req, res) => {
       name: profile.name
     });
 
-    // Validate profile has email
+
     if (!profile.email) {
       return res.status(400).json({
         error: 'No email found in Google profile',
@@ -81,15 +78,14 @@ router.get('/google/callback', async (req, res) => {
       });
     }
 
-    // Check if user already exists
     let user = await User.findOne({ where: { email: profile.email } });
     
     if (!user) {
-      // Create new user
+
       user = await User.create({
         email: profile.email,
         name: profile.name || 'Google User',
-        password: '', // Empty password for OAuth users
+        password: '',
         phone_number: '',
         role: 'Attendee',
         profile_photo: profile.picture || null
@@ -99,7 +95,7 @@ router.get('/google/callback', async (req, res) => {
       console.log('Existing user found via Google OAuth:', user.email);
     }
 
-    // Generate JWT token
+
     const token = jwt.sign(
       { 
         user_id: user.user_id, 
@@ -110,7 +106,6 @@ router.get('/google/callback', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Return success response
     res.json({
       message: 'Google login successful',
       token,
@@ -151,7 +146,6 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
-// Test endpoint to verify Google OAuth configuration
 router.get('/test-config', (req, res) => {
   res.json({
     message: 'Google OAuth configuration test',
@@ -170,8 +164,6 @@ router.get('/test-config', (req, res) => {
     ]
   });
 });
-
-// Error handling middleware for Google routes
 router.use((err, req, res, next) => {
   console.error('Google OAuth route error:', err);
   res.status(500).json({

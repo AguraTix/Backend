@@ -2,15 +2,14 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { User } = require('../models');
 
-// Validate required environment variables
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
   console.error('Missing Google OAuth environment variables:');
   console.error('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
   console.error('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
   throw new Error('Google OAuth environment variables are required');
+
 }
 
-// Determine callback URL based on environment
 const getCallbackURL = () => {
   const baseURL = process.env.BASE_URL || 'http://localhost:3000';
   const callbackURL = `${baseURL}/api/auth/google/callback`;
