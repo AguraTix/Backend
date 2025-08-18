@@ -40,7 +40,7 @@ passport.use(new GoogleStrategy({
 
       const email = profile.emails[0].value;
       
-      // Check if user already exists
+
       let user = await User.findOne({ where: { email: email } });
       
       if (!user) {
