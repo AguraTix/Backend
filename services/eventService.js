@@ -1,13 +1,13 @@
 const { Event, Venue, User } = require('../models');
 
-// Create a new event (Admin only)
+
 exports.createEvent = async (eventData, adminId) => {
     const admin = await User.findByPk(adminId);
     if (!admin || admin.role !== 'Admin') {
         throw new Error('Only admins can create events');
     }
 
-    // Check if venue exists
+
     const venue = await Venue.findByPk(eventData.venue_id);
     if (!venue) {
         throw new Error('Venue not found');
