@@ -1,4 +1,4 @@
-const models = require('../../backend/models/index'); // Import from app.js
+const models = require('../../backend/models/index');
 const { Venue, User } = models;
 
 class VenueController {
