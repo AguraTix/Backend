@@ -23,6 +23,8 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
+app.set('trust proxy', 1);
+
 // Request logging middleware for debugging
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'No origin'}`);
