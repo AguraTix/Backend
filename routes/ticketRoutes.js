@@ -6,10 +6,8 @@
  */
 const express = require('express');
 const router = express.Router();
-const models = require('../models/index');
- // Import from app.js
 const ticketController = require('../controllers/ticketController');
-const isAuthenticated = require('../middleware/authenticate'); // Assume this middleware exists for user auth
+const isAuthenticated = require('../middleware/authenticate'); 
 const { Ticket } = require('../models');
 
 /**

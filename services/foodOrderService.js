@@ -1,7 +1,6 @@
-// Import models lazily to avoid circular dependencies
+
 let FoodOrder, Food, Event, User, sequelize;
 
-// Initialize models when needed
 function getModels() {
   if (!FoodOrder) {
     const models = require('../models');

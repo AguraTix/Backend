@@ -1,4 +1,4 @@
-const models = require('../../backend/models/index');
+const models = require('../models');
 const { Venue, User } = models;
 
 class VenueController {
