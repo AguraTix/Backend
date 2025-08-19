@@ -1,5 +1,7 @@
 const FoodOrderService = require('../services/foodOrderService');
 const { validationResult } = require('express-validator');
+const models = require('../models');
+const { Food } = models;
 
 // Create a new food order
 exports.createOrder = async (req, res) => {
@@ -9,20 +11,28 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { food_id, event_id } = req.body;
+    const { food_id, quantity, special_instructions } = req.body;
     const userId = req.user?.user_id;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
     }
 
-    if (!food_id || !event_id) {
-      return res.status(400).json({ error: 'Food ID and Event ID are required' });
+    if (!food_id) {
+      return res.status(400).json({ error: 'Food ID is required' });
+    }
+
+    // Derive event_id from the food item so client doesn't need to send it
+    const food = await Food.findByPk(food_id);
+    if (!food) {
+      return res.status(404).json({ error: 'Food item not found' });
     }
 
     const order = await FoodOrderService.createOrder({
       food_id,
-      event_id
+      event_id: food.event_id,
+      quantity,
+      special_instructions
     }, userId);
 
     res.status(201).json({
