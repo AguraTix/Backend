@@ -55,61 +55,46 @@ class FoodOrderService {
    * @returns {Promise<Object>} Created order
    */
   static async createOrder(orderData, userId) {
+    getModels();
     const transaction = await sequelize.transaction();
     
     try {
-      getModels();
       const { food_id, event_id, quantity = 1, special_instructions } = orderData;
 
       // Input validation
-      if (!food_id || !event_id) {
-        throw new Error('Food ID and Event ID are required');
+      if (!food_id) {
+        throw new Error('Food ID is required');
       }
       if (quantity < 1) {
         throw new Error('Quantity must be at least 1');
       }
 
-      // Validate food exists and belongs to the event with row locking
+      // Validate food exists with row locking (avoid outer join with FOR UPDATE)
       const food = await Food.findByPk(food_id, {
         transaction,
-        lock: transaction.LOCK.UPDATE,
-        include: [{
-          model: Event,
-          as: 'Event',
-          where: { event_id },
-          required: true,
-          attributes: ['event_id', 'title', 'date', 'status']
-        }]
+        lock: transaction.LOCK.UPDATE
       });
 
       if (!food) {
-        throw new Error('Food item not found for this event');
+        throw new Error('Food item not found');
       }
 
-      // Check if event is active
-      if (food.Event.status !== 'active') {
-        throw new Error('Cannot place order for an inactive event');
+      // If caller did not pass event_id, use the one attached to the food
+      const effectiveEventId = event_id || food.event_id;
+      if (!effectiveEventId) {
+        throw new Error('No event associated with this food item');
       }
 
-      // Check food availability with quantity consideration
       if (food.quantity < quantity) {
-        throw new Error(`Only ${food.quantity} items available for ${food.name}`);
+        throw new Error(`Only ${food.quantity} items available for ${food.foodname || 'this item'}`);
       }
-
-      // Calculate total price with potential discounts
-      const total_price = this.calculateOrderTotal(food.price, quantity);
 
       // Create the order
       const order = await FoodOrder.create({
         user_id: userId,
         food_id,
-        event_id,
-        quantity,
-        unit_price: food.price,
-        total_price,
-        status: ORDER_STATUS.PENDING,
-        special_instructions: special_instructions?.substring(0, 500), // Limit length
-        order_date: new Date()
+        event_id: effectiveEventId,
+        order_status: 'Pending'
       }, { transaction });
 
       // Update food inventory
@@ -117,8 +102,8 @@ class FoodOrderService {
 
       await transaction.commit();
       
-      // Return populated order data
-      return this.getOrderById(order.order_id, userId, false);
+      // Return created order (basic payload)
+      return order;
     } catch (error) {
       await transaction.rollback();
       console.error('Order creation failed:', error);
