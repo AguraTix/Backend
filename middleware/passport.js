@@ -13,7 +13,10 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
 const getCallbackURL = () => {
   const baseURL = process.env.BASE_URL || 'http://localhost:3000';
   const callbackURL = `${baseURL}/api/auth/google/callback`;
-  console.log('Google OAuth callback URL:', callbackURL);
+  console.log('🔧 Google OAuth Configuration:');
+  console.log('   BASE_URL:', baseURL);
+  console.log('   Callback URL:', callbackURL);
+  console.log('   Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
   return callbackURL;
 };
 

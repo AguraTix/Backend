@@ -54,25 +54,19 @@ router.get('/google', (req, res, next) => {
  *   get:
  *     summary: Google OAuth callback
  *     description: |
- *       Receives Google's response and returns JWT token and user info.
+ *       Receives Google's response and redirects to frontend with token.
  *       
  *       **⚠️ This endpoint is called automatically by Google after authentication.**
- *       **Do not call this endpoint directly - it requires authorization code from Google.**
  *       
- *       **Example successful response:**
- *       ```json
- *       {
- *         "message": "Google login successful",
- *         "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
- *         "user": {
- *           "user_id": 123,
- *           "email": "user@gmail.com",
- *           "name": "John Doe",
- *           "role": "Attendee",
- *           "profile_photo": "https://lh3.googleusercontent.com/..."
- *         }
- *       }
- *       ```
+ *       **Success redirect:** `https://agura-web-v-1.vercel.app/?token=JWT_TOKEN&user=USER_DATA&auth=success`
+ *       
+ *       **Error redirect:** `https://agura-web-v-1.vercel.app/?error=ERROR_TYPE&message=ERROR_MESSAGE`
+ *       
+ *       **Frontend should parse URL parameters to get:**
+ *       - `token`: JWT authentication token
+ *       - `user`: JSON string with user data (needs decoding with decodeURIComponent)
+ *       - `auth`: "success" if login successful
+ *       - `error`: Error type if login failed
  *     tags: [Authentication]
  *     parameters:
  *       - in: query
@@ -82,12 +76,8 @@ router.get('/google', (req, res, next) => {
  *         schema:
  *           type: string
  *     responses:
- *       200:
- *         description: Login successful - returns JWT token and user data
- *       400:
- *         description: Authentication failed
- *       500:
- *         description: Server error
+ *       302:
+ *         description: Redirects to frontend with token or error parameters
  */
 router.get('/google/callback', 
   passport.authenticate('google', { 
@@ -100,10 +90,8 @@ router.get('/google/callback',
       console.log('User authenticated:', req.user ? req.user.email : 'No user');
       
       if (!req.user) {
-        return res.status(400).json({
-          error: 'Authentication failed',
-          message: 'No user data received from Google'
-        });
+        // Redirect to frontend with error
+        return res.redirect('https://agura-web-v-1.vercel.app/?error=authentication_failed');
       }
 
       // Generate JWT token
@@ -117,25 +105,25 @@ router.get('/google/callback',
         { expiresIn: '24h' }
       );
 
-      res.json({
-        message: 'Google login successful',
-        token,
-        user: {
-          user_id: req.user.user_id,
-          email: req.user.email,
-          name: req.user.name,
-          role: req.user.role,
-          profile_photo: req.user.profile_photo
-        },
-      });
+      // Encode user data for URL
+      const userData = encodeURIComponent(JSON.stringify({
+        user_id: req.user.user_id,
+        email: req.user.email,
+        name: req.user.name,
+        role: req.user.role,
+        profile_photo: req.user.profile_photo
+      }));
+
+      // Redirect to frontend with token and user data
+      const redirectUrl = `https://agura-web-v-1.vercel.app/?token=${token}&user=${userData}&auth=success`;
+      
+      console.log('Redirecting to frontend:', redirectUrl);
+      res.redirect(redirectUrl);
 
     } catch (error) {
       console.error('Google OAuth callback error:', error);
-      return res.status(500).json({
-        error: 'Google OAuth error',
-        message: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
+      // Redirect to frontend with error
+      return res.redirect('https://agura-web-v-1.vercel.app/?error=server_error');
     }
   }
 );
@@ -154,15 +142,8 @@ router.get('/google/callback',
 // Failure route
 router.get('/google/failure', (req, res) => {
   console.log('Google OAuth authentication failed');
-  res.status(401).json({
-    error: 'Google authentication failed',
-    message: 'Unable to authenticate with Google. Please try again.',
-    instructions: [
-      'Make sure you have a valid Google account',
-      'Check that you granted the required permissions',
-      'Verify your Google Cloud Console configuration'
-    ]
-  });
+  // Redirect to frontend with error
+  res.redirect('https://agura-web-v-1.vercel.app/?error=google_auth_failed&message=Unable to authenticate with Google');
 });
 
 /**
