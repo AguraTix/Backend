@@ -22,7 +22,6 @@ if (!process.env.JWT_SECRET) {
  *       
  *       **To test this endpoint:**
  *       1. Open this URL directly in your browser: https://agura-ticketing-backend.onrender.com/api/auth/google
- *       2. Or use curl with -L flag: `curl -L https://agura-ticketing-backend.onrender.com/api/auth/google`
  *       3. You will be redirected to Google's login page
  *       4. After login, you'll be redirected back to the callback endpoint with your token
  *       
