@@ -29,51 +29,32 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS configuration for development
+// CORS configuration - Allow all origins for development
 const corsOptions = {
-  origin: function (origin, callback) {
-    console.log('CORS request from origin:', origin);
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('Allowing request with no origin');
-      return callback(null, true);
-    }
-    
-    // Allow localhost origins for development and production frontend
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001', 
-      'http://localhost:5173',
-      'http://localhost:4173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:4173',
-      'http://localhost:8080',
-      'http://127.0.0.1:8080',
-      'https://agura-web-v-1.vercel.app',
-      'https://agura-web-v-1.vercel.app/'
-    ];
-    
-    if (allowedOrigins.includes(origin)) {
-      console.log('Origin allowed:', origin);
-      return callback(null, true);
-    }
-    
-    // For development, allow all origins (remove this in production)
-    console.log('Allowing all origins for development');
-    return callback(null, true);
-  },
+  origin: true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length', 'Content-Type'],
   optionsSuccessStatus: 200,
-  preflightContinue: false,
-  maxAge: 86400
+  preflightContinue: false
 };
+
 app.use(cors(corsOptions));
+
+// Additional CORS headers for extra compatibility
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Session configuration for Passport
 app.use(session({ 
@@ -172,7 +153,16 @@ const swaggerOptions = {
       version: '1.0.0',
       description: 'API for AGURA Ticketing App',
     },
-    servers: [{ url: 'http://localhost:3000' }],
+    servers: [
+      { 
+        url: 'https://agura-ticketing-backend.onrender.com',
+        description: 'Production server (Render)'
+      },
+      { 
+        url: 'http://localhost:3000',
+        description: 'Development server'
+      }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
