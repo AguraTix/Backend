@@ -49,13 +49,11 @@ router.get('/statuses', authenticate, foodOrderController.getOrderStatuses);
  *             type: object
  *             required:
  *               - food_id
- *               - event_id
  *               - quantity
  *             properties:
  *               food_id:
- *                 type: integer
- *               event_id:
- *                 type: integer
+ *                 type: string
+ *                 format: uuid
  *               quantity:
  *                 type: integer
  *                 minimum: 1

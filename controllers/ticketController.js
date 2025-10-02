@@ -1,5 +1,6 @@
 const models = require('../models');
 const { Ticket, Event, Venue, User } = models;
+const { Op } = require('sequelize');
 
 class TicketController {
     constructor() {
@@ -155,6 +156,54 @@ class TicketController {
             });
         } catch (error) {
             console.error('Error cancelling ticket:', error);
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
+        }
+    }
+
+    async getAllBookedTickets(req, res) {
+        try {
+            const { status = 'sold', limit = 50, offset = 0 } = req.query;
+
+            const parsedLimit = Math.min(parseInt(limit, 10) || 50, 200);
+            const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+            let statuses = ['sold'];
+            if (status && typeof status === 'string') {
+                if (status.toLowerCase() === 'all') {
+                    statuses = ['reserved', 'sold', 'used'];
+                } else {
+                    statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+                }
+            }
+
+            const tickets = await Ticket.findAll({
+                where: { status: { [Op.in]: statuses } },
+                include: [
+                    { model: Event, as: 'Event', attributes: ['event_id', 'title', 'date'] },
+                    { model: Venue, as: 'Venue', attributes: ['venue_id', 'name', 'location', 'hasSections'] },
+                    { model: User, as: 'User', attributes: ['user_id', 'name', 'email'] }
+                ],
+                order: [['purchaseDate', 'DESC']],
+                limit: parsedLimit,
+                offset: parsedOffset
+            });
+
+            const count = await Ticket.count({ where: { status: { [Op.in]: statuses } } });
+
+            const processedTickets = tickets.map(ticket => ({
+                ...ticket.toJSON(),
+                qrCodeUrl: ticket.qrCodeUrl
+            }));
+
+            return res.status(200).json({
+                message: 'Booked tickets retrieved successfully',
+                total: count,
+                limit: parsedLimit,
+                offset: parsedOffset,
+                tickets: processedTickets
+            });
+        } catch (error) {
+            console.error('Error fetching booked tickets (admin):', error);
             return res.status(500).json({ error: 'Internal server error', details: error.message });
         }
     }

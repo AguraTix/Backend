@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const ticketController = require('../controllers/ticketController');
 const isAuthenticated = require('../middleware/authenticate'); 
+const isAdmin = require('../middleware/isAdmin');
 const { Ticket } = require('../models');
 
 /**
@@ -156,6 +157,42 @@ router.get('/my', isAuthenticated, ticketController.getMyTickets);
  *       500: { description: Internal server error }
  */
 router.post('/:ticketId/cancel', isAuthenticated, ticketController.cancelTicket);
+
+/**
+ * @swagger
+ * /api/tickets/admin/booked:
+ *   get:
+ *     summary: Get all purchased tickets (admin only)
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Tickets with status booked
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: Booked tickets retrieved
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admins only
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/admin/booked', isAdmin, ticketController.getAllBookedTickets);
 
 /**
  * @swagger
