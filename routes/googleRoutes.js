@@ -10,6 +10,14 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is not configured');
 }
 
+// Resolve base URLs from environment
+const baseUrl = process.env.BASE_URL || (process.env.NODE_ENV === 'production'
+  ? 'https://agurabackend.onrender.com'
+  : 'http://localhost:3000');
+
+// Frontend redirect base (keep current default to avoid breaking UX)
+const frontendUrl = process.env.FRONTEND_URL || 'https://agura-web-v-1.vercel.app';
+
 /**
  * @swagger
  * /api/auth/google:
@@ -37,8 +45,8 @@ router.get('/google', (req, res, next) => {
   console.log('Starting Google OAuth flow...');
   console.log('Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
   console.log('Client Secret:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
-  console.log('Base URL:', process.env.BASE_URL);
-  console.log('Expected callback URL:', `${process.env.BASE_URL}/api/auth/google/callback`);
+  console.log('Base URL:', baseUrl);
+  console.log('Expected callback URL:', `${baseUrl}/api/auth/google/callback`);
   
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
@@ -90,7 +98,7 @@ router.get('/google/callback',
       
       if (!req.user) {
         // Redirect to frontend with error
-        return res.redirect('https://agura-web-v-1.vercel.app/?error=authentication_failed');
+        return res.redirect(`${frontendUrl}/?error=authentication_failed`);
       }
 
       // Generate JWT token
@@ -114,7 +122,7 @@ router.get('/google/callback',
       }));
 
       // Redirect to frontend with token and user data
-      const redirectUrl = `https://agura-web-v-1.vercel.app/?token=${token}&user=${userData}&auth=success`;
+      const redirectUrl = `${frontendUrl}/?token=${token}&user=${userData}&auth=success`;
       
       console.log('Redirecting to frontend:', redirectUrl);
       res.redirect(redirectUrl);
@@ -122,7 +130,7 @@ router.get('/google/callback',
     } catch (error) {
       console.error('Google OAuth callback error:', error);
       // Redirect to frontend with error
-      return res.redirect('https://agura-web-v-1.vercel.app/?error=server_error');
+      return res.redirect(`${frontendUrl}/?error=server_error`);
     }
   }
 );
@@ -142,7 +150,7 @@ router.get('/google/callback',
 router.get('/google/failure', (req, res) => {
   console.log('Google OAuth authentication failed');
   // Redirect to frontend with error
-  res.redirect('https://agura-web-v-1.vercel.app/?error=google_auth_failed&message=Unable to authenticate with Google');
+  res.redirect(`${frontendUrl}/?error=google_auth_failed&message=Unable to authenticate with Google`);
 });
 
 /**
@@ -180,8 +188,6 @@ router.get('/google/failure', (req, res) => {
  *         description: Configuration error
  */
 router.get('/test-config', (req, res) => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-  
   res.json({
     message: 'Google OAuth configuration test',
     config: {
@@ -190,7 +196,8 @@ router.get('/test-config', (req, res) => {
       jwtSecret: process.env.JWT_SECRET ? 'Set' : 'Missing',
       callbackURL: `${baseUrl}/api/auth/google/callback`,
       sessionSecret: process.env.SESSION_SECRET ? 'Set' : 'Missing',
-      baseUrl: baseUrl
+      baseUrl: baseUrl,
+      frontendUrl: frontendUrl
     },
     instructions: [
       '1. Make sure Google+ API is enabled in Google Cloud Console',
