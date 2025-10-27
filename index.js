@@ -157,7 +157,7 @@ const swaggerOptions = {
     },
     servers: [
       { 
-        url: 'https://agura-ticketing-backend.onrender.com',
+        url: 'https://agurabackend.onrender.com/',
         description: 'Production server (Render)'
       },
       { 
