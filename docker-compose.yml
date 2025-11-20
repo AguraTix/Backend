@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: agura-db
+    restart: always
+    environment:
+      - POSTGRES_USER=agura
+      - POSTGRES_PASSWORD=agura
+      - POSTGRES_DB=aguradb
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agura"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agura-server
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # Fallback if .env is missing or DATABASE_URL is not set.
+      - DATABASE_URL=postgres://agura:agura@db:5432/aguradb
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
