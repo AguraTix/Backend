@@ -163,6 +163,8 @@ class TicketController {
     async getAllBookedTickets(req, res) {
         try {
             const { status = 'sold', limit = 50, offset = 0 } = req.query;
+            const userId = req.user?.user_id;
+            const userRole = req.user?.role;
 
             const parsedLimit = Math.min(parseInt(limit, 10) || 50, 200);
             const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
@@ -176,10 +178,24 @@ class TicketController {
                 }
             }
 
+            // Build where clause - filter by admin's events if Admin (not SuperAdmin)
+            let whereClause = { status: { [Op.in]: statuses } };
+            let eventInclude = {
+                model: Event,
+                as: 'Event',
+                attributes: ['event_id', 'title', 'date', 'admin_id']
+            };
+
+            // If user is Admin (not SuperAdmin), only show tickets for their events
+            if (userRole === 'Admin' && userId) {
+                eventInclude.where = { admin_id: userId };
+            }
+            // SuperAdmin sees all tickets (no filter)
+
             const tickets = await Ticket.findAll({
-                where: { status: { [Op.in]: statuses } },
+                where: whereClause,
                 include: [
-                    { model: Event, as: 'Event', attributes: ['event_id', 'title', 'date'] },
+                    eventInclude,
                     { model: Venue, as: 'Venue', attributes: ['venue_id', 'name', 'location', 'hasSections'] },
                     { model: User, as: 'User', attributes: ['user_id', 'name', 'email'] }
                 ],
@@ -188,7 +204,15 @@ class TicketController {
                 offset: parsedOffset
             });
 
-            const count = await Ticket.count({ where: { status: { [Op.in]: statuses } } });
+            // Count with same filter
+            let countWhere = { status: { [Op.in]: statuses } };
+            if (userRole === 'Admin' && userId) {
+                // For count, we need to join with events to filter by admin_id
+                const adminEvents = await Event.findAll({ where: { admin_id: userId }, attributes: ['event_id'] });
+                const eventIds = adminEvents.map(e => e.event_id);
+                countWhere.eventId = { [Op.in]: eventIds };
+            }
+            const count = await Ticket.count({ where: countWhere });
 
             const processedTickets = tickets.map(ticket => ({
                 ...ticket.toJSON(),
@@ -200,7 +224,8 @@ class TicketController {
                 total: count,
                 limit: parsedLimit,
                 offset: parsedOffset,
-                tickets: processedTickets
+                tickets: processedTickets,
+                filter: userRole === 'Admin' ? 'Your events only' : 'All events'
             });
         } catch (error) {
             console.error('Error fetching booked tickets (admin):', error);

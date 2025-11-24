@@ -276,4 +276,69 @@ router.post('/:orderId/cancel', authenticate, foodOrderController.cancelOrder);
  */
 router.get('/event/:eventId', authenticate, isAdmin, foodOrderController.getEventOrders);
 
+// Get all orders (admin only - for dashboard)
+/**
+ * @swagger
+ * /api/food-orders/admin/all:
+ *   get:
+ *     summary: Get all orders (Admin dashboard)
+ *     description: |
+ *       Returns orders filtered by user role:
+ *       - Admin: Only orders for their foods
+ *       - SuperAdmin: All orders
+ *     tags: [Food Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: event_id
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of orders
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/admin/all', authenticate, isAdmin, foodOrderController.getAllOrders);
+
+// Get order statistics for an event
+/**
+ * @swagger
+ * /api/food-orders/event/{eventId}/stats:
+ *   get:
+ *     summary: Get order statistics for an event
+ *     tags: [Food Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Order statistics
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
+ */
+router.get('/event/:eventId/stats', authenticate, isAdmin, foodOrderController.getEventOrderStats);
+
 module.exports = router;

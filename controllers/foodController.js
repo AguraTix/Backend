@@ -27,12 +27,13 @@
        throw new Error('Unauthorized: missing admin ID');
      }
 
-     // Validate event exists and admin owns it
+     // Validate event exists and admin owns it (or is SuperAdmin)
      const event = await Event.findByPk(event_id);
      if (!event) {
        throw new Error('Event not found');
      }
-     if (event.admin_id !== admin_id) {
+     const admin = await require('../models').User.findByPk(admin_id);
+     if (admin.role !== 'SuperAdmin' && event.admin_id !== admin_id) {
        throw new Error('Unauthorized: You can only add foods to your own events');
      }
 
@@ -66,7 +67,19 @@
  
  exports.getAllFoods = async (req, res) => {
    try {
+     const userId = req.user?.user_id;
+     const userRole = req.user?.role;
+
+     let whereClause = {};
+     
+     // If user is Admin (not SuperAdmin), only show their foods
+     if (userRole === 'Admin') {
+       whereClause.admin_id = userId;
+     }
+     // SuperAdmin sees all foods (no filter)
+
      const foods = await Food.findAll({
+       where: whereClause,
        include: [
          {
            model: Event,
@@ -179,6 +192,9 @@ exports.getGeneralFoods = async (req, res) => {
  exports.getFoodById = async (req, res) => {
    try {
      const { id } = req.params; // route uses :id
+     const userId = req.user?.user_id;
+     const userRole = req.user?.role;
+
      const food = await Food.findByPk(id, {
        include: [
          {
@@ -191,6 +207,12 @@ exports.getGeneralFoods = async (req, res) => {
      if (!food) {
        throw new Error('Food item not found');
      }
+
+     // If user is Admin (not SuperAdmin), only allow access to their own foods
+     if (userRole === 'Admin' && userId && food.admin_id !== userId) {
+       throw new Error('Access denied. You can only view your own foods.');
+     }
+     // SuperAdmin can view any food
      
      // Process food to ensure proper image URL
      const foodData = food.toJSON();
@@ -235,18 +257,24 @@ exports.getGeneralFoods = async (req, res) => {
        throw new Error('Unauthorized: missing admin ID');
      }
 
-     // Validate event exists and admin owns it
+     // Validate event exists and admin owns it (or is SuperAdmin)
      const event = await Event.findByPk(event_id);
      if (!event) {
        throw new Error('Event not found');
      }
-     if (event.admin_id !== admin_id) {
+     const admin = await require('../models').User.findByPk(admin_id);
+     if (admin.role !== 'SuperAdmin' && event.admin_id !== admin_id) {
        throw new Error('Unauthorized: You can only add foods to your own events');
      }
- 
+
      const food = await Food.findByPk(id);
      if (!food) {
        throw new Error('Food item not found');
+     }
+
+     // Check if admin owns the food (or is SuperAdmin)
+     if (admin.role !== 'SuperAdmin' && food.admin_id !== admin_id) {
+       throw new Error('Unauthorized: You can only update your own foods');
      }
 
           await food.update({
@@ -280,12 +308,23 @@ exports.getGeneralFoods = async (req, res) => {
  exports.deleteFood = async (req, res) => {
    try {
      const { id } = req.params;
- 
+     const adminId = req.user?.user_id;
+
+     if (!adminId) {
+       return res.status(401).json({ error: 'Unauthorized: No user ID provided' });
+     }
+
      const food = await Food.findByPk(id);
      if (!food) {
        throw new Error('Food item not found');
      }
- 
+
+     const admin = await require('../models').User.findByPk(adminId);
+     // SuperAdmin can delete any food, regular Admin can only delete their own
+     if (admin.role !== 'SuperAdmin' && food.admin_id !== adminId) {
+       return res.status(403).json({ error: 'Only the food admin or SuperAdmin can delete this food' });
+     }
+
      await food.destroy();
      res.status(200).json({ message: 'Food item deleted successfully' });
    } catch (error) {

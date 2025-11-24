@@ -23,7 +23,7 @@ class VenueController {
 
             console.log('Checking admin with ID:', adminId);
             const admin = await User.findByPk(adminId);
-            if (!admin || admin.role !== 'Admin') {
+            if (!admin || (admin.role !== 'Admin' && admin.role !== 'SuperAdmin')) {
                 return res.status(403).json({ error: 'Only admins can create venues' });
             }
 
@@ -59,7 +59,19 @@ class VenueController {
 
     async getAllVenues(req, res) {
         try {
+            const userId = req.user?.user_id;
+            const userRole = req.user?.role;
+
+            let whereClause = {};
+            
+            // If user is Admin (not SuperAdmin), only show their venues
+            if (userRole === 'Admin') {
+                whereClause.admin_id = userId;
+            }
+            // SuperAdmin sees all venues (no filter)
+
             const venues = await Venue.findAll({
+                where: whereClause,
                 include: [
                     {
                         model: User,
@@ -70,7 +82,8 @@ class VenueController {
             });
             return res.status(200).json({
                 message: 'Venues retrieved successfully',
-                venues
+                venues,
+                filter: userRole === 'Admin' ? 'Your venues only' : 'All venues'
             });
         } catch (error) {
             console.error('Error fetching venues:', error);
@@ -81,6 +94,9 @@ class VenueController {
     async getVenueById(req, res) {
         try {
             const { venueId } = req.params;
+            const userId = req.user?.user_id;
+            const userRole = req.user?.role;
+
             const venue = await Venue.findByPk(venueId, {
                 include: [
                     {
@@ -93,13 +109,20 @@ class VenueController {
             if (!venue) {
                 return res.status(404).json({ error: 'Venue not found' });
             }
+
+            // If user is Admin (not SuperAdmin), only allow access to their own venues
+            if (userRole === 'Admin' && venue.admin_id !== userId) {
+                return res.status(403).json({ error: 'Access denied. You can only view your own venues.' });
+            }
+            // SuperAdmin can view any venue
+
             return res.status(200).json({
                 message: 'Venue retrieved successfully',
                 venue
             });
         } catch (error) {
             console.error('Error fetching venue:', error);
-            return res.status(500).json({ error: C });
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
         }
     }
 
@@ -118,8 +141,10 @@ class VenueController {
                 return res.status(404).json({ error: 'Venue not found' });
             }
 
-            if (venue.admin_id !== adminId) {
-                return res.status(403).json({ error: 'Only the venue admin can update this venue' });
+            const user = await User.findByPk(adminId);
+            // SuperAdmin can update any venue, regular Admin can only update their own
+            if (user.role !== 'SuperAdmin' && venue.admin_id !== adminId) {
+                return res.status(403).json({ error: 'Only the venue admin or SuperAdmin can update this venue' });
             }
 
             if (hasSections) {
@@ -164,8 +189,10 @@ class VenueController {
                 return res.status(404).json({ error: 'Venue not found' });
             }
 
-            if (venue.admin_id !== adminId) {
-                return res.status(403).json({ error: 'Only the venue admin can delete this venue' });
+            const user = await User.findByPk(adminId);
+            // SuperAdmin can delete any venue, regular Admin can only delete their own
+            if (user.role !== 'SuperAdmin' && venue.admin_id !== adminId) {
+                return res.status(403).json({ error: 'Only the venue admin or SuperAdmin can delete this venue' });
             }
 
             await venue.destroy();

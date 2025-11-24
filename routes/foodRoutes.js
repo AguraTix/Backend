@@ -3,6 +3,7 @@ const router = express.Router();
 const foodController = require('../controllers/foodController');
 const { uploadFoodImage, handleUploadError } = require('../middleware/foodImageUpload');
 const isAdmin = require('../middleware/isAdmin');
+const optionalAuth = require('../middleware/optionalAuth');
 
 /**
  * @swagger
@@ -49,11 +50,18 @@ router.post('/', isAdmin, uploadFoodImage, handleUploadError, foodController.cre
  * /api/foods:
  *   get:
  *     summary: Get all food items
+ *     description: |
+ *       Returns foods filtered by user role:
+ *       - Admin: Only their own foods
+ *       - SuperAdmin: All foods
+ *       - Public/Attendee: All foods
  *     tags: [Foods]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200: { description: List of food items }
  */
-router.get('/', foodController.getAllFoods);
+router.get('/', optionalAuth, foodController.getAllFoods);
 
 /**
  * @swagger
@@ -119,7 +127,7 @@ router.get('/general', foodController.getGeneralFoods);
  *       200: { description: Food item found }
  *       404: { description: Food item not found }
  */
-router.get('/:id', foodController.getFoodById);
+router.get('/:id', optionalAuth, foodController.getFoodById);
 
 /**
  * @swagger
