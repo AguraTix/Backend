@@ -1,10 +1,15 @@
 const userService = require('../services/userService');
+const emailVerificationService = require('../services/emailVerificationService');
 
 exports.register = async(req,res) =>{
     try{
         const{email,password,phone_number,name} =req.body;
         const result = await userService.register({email,password,name,phone_number});
-        res.status(201).json({message:'User created successful',user_id:result.user_id});
+        res.status(201).json({
+          message: result.message,
+          user_id: result.user_id,
+          email_verified: result.email_verified
+        });
     }catch(error){
         res.status(400).json({error:error.message});
     }
@@ -13,7 +18,11 @@ exports.registerAdmin = async(req,res) =>{
     try{
         const{email,password,phone_number,name} =req.body;
         const result = await userService.registerAdmin({email,password,name,phone_number});
-        res.status(201).json({message:'User created successful',user_id:result.user_id});
+        res.status(201).json({
+          message: result.message,
+          user_id: result.user_id,
+          email_verified: result.email_verified
+        });
     }catch(error){
         res.status(400).json({error:error.message});
     }
@@ -174,6 +183,45 @@ exports.updateSuperAdminProfile = async (req, res) => {
     const updates = req.body;
     const result = await userService.updateSuperAdminProfile({ superAdminId, updates });
     res.json({ message: 'SuperAdmin profile updated successfully', user: result });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.sendEmailVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    const result = await emailVerificationService.sendVerificationEmail(email, null);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and verification code are required' });
+    }
+    const result = await emailVerificationService.verifyEmail(email, code);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    const result = await emailVerificationService.resendVerificationEmail(email);
+    res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

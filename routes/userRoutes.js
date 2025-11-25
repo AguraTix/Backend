@@ -35,6 +35,67 @@ const authenticate = require('../middleware/authenticate');
  */
 router.post('/register', userController.register);
 
+/**
+ * @swagger
+ * /api/users/email/verify/send:
+ *   post:
+ *     summary: Request a verification code
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string }
+ *     responses:
+ *       200: { description: Verification email sent }
+ *       400: { description: Bad request }
+ */
+router.post('/email/verify/send', userController.sendEmailVerification);
+
+/**
+ * @swagger
+ * /api/users/email/verify/confirm:
+ *   post:
+ *     summary: Verify an email address with a code
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string }
+ *               code: { type: string }
+ *     responses:
+ *       200: { description: Email verified }
+ *       400: { description: Bad request }
+ */
+router.post('/email/verify/confirm', userController.verifyEmail);
+
+/**
+ * @swagger
+ * /api/users/email/verify/resend:
+ *   post:
+ *     summary: Resend a verification code
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string }
+ *     responses:
+ *       200: { description: Verification email resent }
+ *       400: { description: Bad request }
+ */
+router.post('/email/verify/resend', userController.resendVerificationEmail);
+
 
 /**
  * @swagger

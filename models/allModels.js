@@ -10,6 +10,15 @@ module.exports = (sequelize) => {
         phone_number: { type: DataTypes.STRING, unique: true },
         name: { type: DataTypes.STRING, allowNull: false },
         profile_photo: { type: DataTypes.STRING },
+        email_verified: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
+        email_verified_at: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
         role: {type: DataTypes.STRING,defaultValue: 'Attendee',allowNull: false,
              validate: {
              isIn: [['Attendee', 'Admin', 'SuperAdmin']]
