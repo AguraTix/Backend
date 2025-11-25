@@ -75,7 +75,9 @@ async function createSuperAdmin() {
       name,
       password: hashedPassword,
       role: 'SuperAdmin',
-      phone_number: phone_number || ''
+      phone_number: phone_number || '',
+      email_verified: true,
+      email_verified_at: new Date()
     });
 
     console.log('\n✅ SuperAdmin account created successfully!');

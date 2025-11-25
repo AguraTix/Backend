@@ -1,6 +1,29 @@
 const eventService = require('../services/eventService');
 const { Event, Venue, User, Ticket } = require('../models');
 const { v4: uuidv4 } = require('uuid');
+const cloudinaryService = require('../services/cloudinaryService');
+
+async function uploadEventAsset(file, folder) {
+  if (!file) return null;
+  const uploadResult = await cloudinaryService.uploadToCloudinary(file.path, folder);
+  cloudinaryService.deleteLocalFile(file.path);
+  return {
+    filename: file.filename,
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size,
+    path: uploadResult.secure_url,
+    public_id: uploadResult.public_id,
+    width: uploadResult.width,
+    height: uploadResult.height,
+  };
+}
+
+async function uploadGallery(files, folder) {
+  if (!files || !files.length) return [];
+  const uploads = await Promise.all(files.map(file => uploadEventAsset(file, folder)));
+  return uploads.filter(Boolean);
+}
 
 // Create a new event
 exports.createEvent = async (req, res) => {
@@ -121,19 +144,11 @@ exports.createEvent = async (req, res) => {
     }
 
     // Process event_image
-    let imageUrl = null;
-    if (eventImage) {
-      imageUrl = `/uploads/events/${eventImage.filename}`;
-    }
+    const uploadedMainImage = await uploadEventAsset(eventImage, 'agura/events/main');
+    const imageUrl = uploadedMainImage ? uploadedMainImage.path : null;
 
     // Process event_images
-    const eventImagesData = eventImages.map(file => ({
-      filename: file.filename,
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size,
-      path: `/uploads/events/${file.filename}`
-    }));
+    const eventImagesData = await uploadGallery(eventImages, 'agura/events/gallery');
 
     // Create event
     const event = await Event.create({
@@ -165,7 +180,9 @@ exports.createEvent = async (req, res) => {
         originalname: img.originalname,
         mimetype: img.mimetype,
         size: img.size,
-        path: `${req.protocol}://${req.get('host')}${img.path}`
+        path: img.path && !img.path.startsWith('http')
+          ? `${req.protocol}://${req.get('host')}${img.path}`
+          : img.path
       })),
       image_count: event.event_images.length,
       image_url: event.image_url ? `${req.protocol}://${req.get('host')}${event.image_url}` : null,
@@ -364,28 +381,16 @@ exports.updateEvent = async (req, res) => {
         const adminId = req.user.user_id;
 
         // Handle main event image
-        let eventImage = null;
+        let uploadedMainImageUrl;
         if (req.files && req.files.event_image && req.files.event_image[0]) {
-            const file = req.files.event_image[0];
-            eventImage = {
-                filename: file.filename,
-                originalname: file.originalname,
-                mimetype: file.mimetype,
-                size: file.size,
-                path: `/uploads/events/${file.filename}`
-            };
+            const uploadedMain = await uploadEventAsset(req.files.event_image[0], 'agura/events/main');
+            uploadedMainImageUrl = uploadedMain ? uploadedMain.path : null;
         }
 
         // Handle additional event images
-        let eventImages = null;
+        let uploadedEventImages;
         if (req.files && req.files.event_images && req.files.event_images.length > 0) {
-            eventImages = req.files.event_images.map(file => ({
-                filename: file.filename,
-                originalname: file.originalname,
-                mimetype: file.mimetype,
-                size: file.size,
-                path: `/uploads/events/${file.filename}`
-            }));
+            uploadedEventImages = await uploadGallery(req.files.event_images, 'agura/events/gallery');
         }
 
         // Parse artist_lineup if it's a string
@@ -394,7 +399,7 @@ exports.updateEvent = async (req, res) => {
             try {
                 parsedArtistLineup = JSON.parse(artist_lineup);
             } catch (parseError) {
-                parsedArtistLineup = artist_lineupffee
+                parsedArtistLineup = artist_lineup
                 .split(',')
                 .map(name => name.trim());
             }
@@ -405,10 +410,17 @@ exports.updateEvent = async (req, res) => {
             description,
             date,
             venue_id,
-            artist_lineup: parsedArtistLineup,
-            event_images: eventImages,
-            image_url: eventImage ? eventImage.path : undefined
         };
+
+        if (parsedArtistLineup !== undefined) {
+            updateData.artist_lineup = parsedArtistLineup;
+        }
+        if (uploadedEventImages) {
+            updateData.event_images = uploadedEventImages;
+        }
+        if (uploadedMainImageUrl !== undefined) {
+            updateData.image_url = uploadedMainImageUrl;
+        }
 
         const event = await eventService.updateEvent(eventId, updateData, adminId);
         
@@ -416,23 +428,25 @@ exports.updateEvent = async (req, res) => {
             message: 'Event updated successfully',
             event: {
                 ...event.toJSON(),
-                event_images: eventImages ? eventImages.map(img => ({
-                    filename: img.filename,
-                    originalname: img.originalname,
-                    mimetype: img.mimetype,
-                    size: img.size,
-                    path: `${req.protocol}://${req.get('host')}${img.path}`
+                event_images: uploadedEventImages ? uploadedEventImages.map(img => ({
+                    ...img,
+                    path: img.path && !img.path.startsWith('http') 
+                        ? `${req.protocol}://${req.get('host')}${img.path}` 
+                        : img.path
                 })) : (event.event_images ? event.event_images.map(img => ({
                     ...img,
                     path: img.path && !img.path.startsWith('http') 
                         ? `${req.protocol}://${req.get('host')}${img.path}` 
                         : img.path
                 })) : []),
-                image_url: eventImage ? `${req.protocol}://${req.get('host')}${eventImage.path}` : 
-                    (event.image_url && !event.image_url.startsWith('http') 
+                image_url: uploadedMainImageUrl !== undefined
+                    ? (uploadedMainImageUrl && !uploadedMainImageUrl.startsWith('http')
+                        ? `${req.protocol}://${req.get('host')}${uploadedMainImageUrl}`
+                        : uploadedMainImageUrl)
+                    : (event.image_url && !event.image_url.startsWith('http') 
                         ? `${req.protocol}://${req.get('host')}${event.image_url}` 
                         : event.image_url),
-                image_count: eventImages ? eventImages.length : (event.event_images ? event.event_images.length : 0)
+                image_count: uploadedEventImages ? uploadedEventImages.length : (event.event_images ? event.event_images.length : 0)
             }
         });
     } catch (error) {

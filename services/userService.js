@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const validator = require('validator');
+const emailVerificationService = require('./emailVerificationService');
 
 const NAME_REGEX = /(?=.*[A-Za-z\s])/;
 const PHONE_REGEX = /^[0-9+\-() ]{10,20}$/;
@@ -96,6 +97,7 @@ const buildPublicUser = (user) => ({
     phone_number: user.phone_number,
     role: user.role,
     expires_at: user.expires_at,
+    email_verified: user.email_verified,
 });
 
 const applyUserCredentialUpdates = async (user, updates, { allowExpiration = false } = {}) => {
@@ -156,8 +158,21 @@ exports.register = async({email,password,name,phone_number})=>{
             password: hashedPassword,
             name: normalizedName,
             phone_number: normalizedPhone,
+            email_verified: false,
         });
-        return {message: 'User registered successfully', user_id: user.user_id};
+
+        try {
+            await emailVerificationService.sendVerificationEmail(user.email, user.name);
+        } catch (emailError) {
+            await user.destroy();
+            throw new Error(`Registration failed while sending verification email: ${emailError.message}`);
+        }
+
+        return {
+            message: 'User registered successfully. Please verify your email to continue.',
+            user_id: user.user_id,
+            email_verified: user.email_verified,
+        };
     } catch (error) {
         // Sequelize validation errors
         if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
@@ -185,9 +200,22 @@ exports.registerAdmin = async({email,password,name,phone_number})=>{
             password: hashedPassword,
             name: normalizedName,
             phone_number: normalizedPhone,
-            role:'Admin'
+            role:'Admin',
+            email_verified: false,
         });
-        return {message: 'User registered successfully', user_id: user.user_id};
+
+        try {
+            await emailVerificationService.sendVerificationEmail(user.email, user.name);
+        } catch (emailError) {
+            await user.destroy();
+            throw new Error(`Registration failed while sending verification email: ${emailError.message}`);
+        }
+
+        return {
+            message: 'Admin registered successfully. Please verify your email to continue.',
+            user_id: user.user_id,
+            email_verified: user.email_verified,
+        };
     } catch (error) {
         // Sequelize validation errors
         if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
@@ -221,6 +249,16 @@ exports.login = async({ identifier, password }) => {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
         throw new Error('Incorrect password. Please try again');
+    }
+
+    if (user.role !== 'SuperAdmin' && !user.email_verified) {
+        // Attempt to resend verification email so the user can complete verification
+        try {
+            await emailVerificationService.sendVerificationEmail(user.email, user.name);
+        } catch (verificationError) {
+            console.error('Failed to resend verification email on login attempt:', verificationError.message);
+        }
+        throw new Error('Please verify your email before logging in. A new verification code has been sent to your inbox.');
     }
 
     const token = jwt.sign({ user_id: user.user_id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });

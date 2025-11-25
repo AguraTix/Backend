@@ -1,10 +1,20 @@
  const { Food, Event } = require('../models');
+ const cloudinaryService = require('../services/cloudinaryService');
  
  exports.createFood = async (req, res) => {
    try {
      const { foodname, quantity, foodprice, fooddescription, event_id } = req.body;
      const admin_id = req.user?.user_id; // From JWT token
-     const foodimage = req.file ? `/uploads/${req.file.filename}` : null;
+    let foodimage = null;
+
+    if (req.file) {
+      const uploadResult = await cloudinaryService.uploadBufferToCloudinary(
+        req.file.buffer,
+        'agura/foods',
+        req.file.originalname
+      );
+      foodimage = uploadResult.secure_url;
+    }
  
      // Basic request logging
      console.log('Request body:', req.body);
@@ -234,7 +244,15 @@ exports.getGeneralFoods = async (req, res) => {
      const { id } = req.params;
      const { foodname, quantity, foodprice, fooddescription, event_id } = req.body;
      const admin_id = req.user?.user_id; // From JWT token
-     const newFoodImage = req.file ? `/uploads/${req.file.filename}` : null;
+    let newFoodImage = null;
+    if (req.file) {
+      const uploadResult = await cloudinaryService.uploadBufferToCloudinary(
+        req.file.buffer,
+        'agura/foods',
+        req.file.originalname
+      );
+      newFoodImage = uploadResult.secure_url;
+    }
  
      // Basic request logging
      console.log('Request body:', req.body);

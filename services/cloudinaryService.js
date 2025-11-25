@@ -9,6 +9,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  throw new Error('Cloudinary configuration error: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET must all be set in the environment');
+}
+
 /**
  * Upload a file from local storage to Cloudinary
  * @param {string} filePath - Path to the local file
@@ -154,4 +158,3 @@ module.exports = {
   deleteLocalFile,
   extractPublicIdFromUrl,
 };
-

@@ -77,6 +77,7 @@ async function verifyEmail(email, code) {
 
   // Mark email as verified and clear verification code
   user.email_verified = true;
+  user.email_verified_at = new Date();
   user.verificationCode = null;
   user.codeExpiresAt = null;
   await user.save();
