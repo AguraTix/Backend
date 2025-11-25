@@ -1,5 +1,6 @@
 const models = require('../models');
 const { Venue, User } = models;
+const notificationService = require('../services/notificationService');
 
 class VenueController {
     constructor() {
@@ -46,6 +47,18 @@ class VenueController {
                 sections: hasSections ? sections : [],
                 admin_id: adminId
             });
+
+            try {
+                await notificationService.createNotification({
+                    user_id: adminId,
+                    type: 'VENUE_CREATED',
+                    title: 'Venue created',
+                    message: `You created venue ${venue.name} at ${venue.location}.`,
+                    data: { venue_id: venue.venue_id }
+                });
+            } catch (notifyError) {
+                console.error('Failed to create venue notification:', notifyError);
+            }
 
             return res.status(201).json({
                 message: 'Venue created successfully',

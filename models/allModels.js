@@ -384,6 +384,49 @@ module.exports = (sequelize) => {
     User.hasMany(Ticket, { foreignKey: 'attendee_id' });
     Ticket.belongsTo(User, { foreignKey: 'attendee_id', as: 'User' });
 
+    // Notification model
+    const Notification = sequelize.define('Notification', {
+        notification_id: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true
+        },
+        user_id: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            references: {
+                model: 'users',
+                key: 'user_id'
+            }
+        },
+        type: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        title: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        message: {
+            type: DataTypes.TEXT,
+            allowNull: false
+        },
+        data: {
+            type: DataTypes.JSONB,
+            allowNull: true
+        },
+        is_read: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        }
+    }, {
+        tableName: 'notifications',
+        timestamps: true
+    });
+
+    User.hasMany(Notification, { foreignKey: 'user_id', as: 'Notifications' });
+    Notification.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
 
     return {
         User,
@@ -391,7 +434,8 @@ module.exports = (sequelize) => {
         Venue,
         Ticket,
         Food,
-        FoodOrder
+        FoodOrder,
+        Notification
     };
 
 };
