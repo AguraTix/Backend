@@ -1,6 +1,7 @@
 const models = require('../models');
 const { Ticket, Event, Venue, User } = models;
 const { Op } = require('sequelize');
+const notificationService = require('../services/notificationService');
 
 class TicketController {
     constructor() {
@@ -74,6 +75,34 @@ class TicketController {
             ticket.attendee_id = attendee_id;
             ticket.status = 'sold';
             await ticket.save();
+
+            try {
+                const event = await Event.findByPk(ticket.eventId, {
+                    include: [{ model: Venue, as: 'Venue' }, { model: User, as: 'User' }]
+                });
+
+                if (event) {
+                    await notificationService.createNotification({
+                        user_id: attendee_id,
+                        type: 'TICKET_BOOKED',
+                        title: 'Ticket booked',
+                        message: `Your ticket for ${event.title} has been booked.`,
+                        data: { ticket_id: ticket.ticket_id, event_id: ticket.eventId, venue_id: ticket.venueId }
+                    });
+
+                    if (event.User && event.User.user_id) {
+                        await notificationService.createNotification({
+                            user_id: event.User.user_id,
+                            type: 'TICKET_BOOKED_FOR_EVENT',
+                            title: 'Ticket booked for your event',
+                            message: `A ticket was booked for your event ${event.title}.`,
+                            data: { ticket_id: ticket.ticket_id, event_id: ticket.eventId, attendee_id }
+                        });
+                    }
+                }
+            } catch (notifyError) {
+                console.error('Failed to create ticket booking notifications:', notifyError);
+            }
 
             return res.status(200).json({
                 message: 'Ticket booked successfully',

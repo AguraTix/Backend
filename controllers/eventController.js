@@ -2,6 +2,7 @@ const eventService = require('../services/eventService');
 const { Event, Venue, User, Ticket } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const cloudinaryService = require('../services/cloudinaryService');
+const notificationService = require('../services/notificationService');
 
 async function uploadEventAsset(file, folder) {
   if (!file) return null;
@@ -166,6 +167,18 @@ exports.createEvent = async (req, res) => {
     // Generate physical tickets based on venue configuration and ticket types
     const generatedTickets = await generatePhysicalTickets(event, venue, parsedTickets);
     await Ticket.bulkCreate(generatedTickets);
+
+    try {
+      await notificationService.createNotification({
+        user_id: req.user.user_id,
+        type: 'EVENT_CREATED',
+        title: 'Event created',
+        message: `You created event ${event.title} at ${venue.name}.`,
+        data: { event_id: event.event_id, venue_id: venue.venue_id }
+      });
+    } catch (notifyError) {
+      console.error('Failed to create event notification:', notifyError);
+    }
 
     // Prepare response (include image paths for frontend)
     const responseEvent = {
