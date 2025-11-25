@@ -21,9 +21,18 @@ exports.createEvent = async (eventData, adminId) => {
     return event;
 };
 
-// Get all events
-exports.getAllEvents = async () => {
+// Get all events (filtered by role)
+exports.getAllEvents = async (userId, userRole) => {
+    let whereClause = {};
+    
+    // If user is Admin (not SuperAdmin), only show their events
+    if (userRole === 'Admin') {
+        whereClause.admin_id = userId;
+    }
+    // SuperAdmin sees all events (no filter)
+
     const events = await Event.findAll({
+        where: whereClause,
         include: [
             {
                 model: User,
@@ -40,8 +49,8 @@ exports.getAllEvents = async () => {
     return events;
 };
 
-// Get event by ID
-exports.getEventById = async (eventId) => {
+// Get event by ID (with ownership check)
+exports.getEventById = async (eventId, userId = null, userRole = null) => {
     const event = await Event.findByPk(eventId, {
         include: [
             {
@@ -60,19 +69,27 @@ exports.getEventById = async (eventId) => {
     if (!event) {
         throw new Error('Event not found');
     }
+
+    // If user is Admin (not SuperAdmin), only allow access to their own events
+    if (userRole === 'Admin' && userId && event.admin_id !== userId) {
+        throw new Error('Access denied. You can only view your own events.');
+    }
+    // SuperAdmin can view any event, or if no user context (public access)
     
     return event;
 };
 
-// Update event (Admin only - must be the event's admin)
+// Update event (Admin only - must be the event's admin, or SuperAdmin)
 exports.updateEvent = async (eventId, updateData, adminId) => {
     const event = await Event.findByPk(eventId);
     if (!event) {
         throw new Error('Event not found');
     }
 
-    if (event.admin_id !== adminId) {
-        throw new Error('Only the event admin can update this event');
+    const admin = await User.findByPk(adminId);
+    // SuperAdmin can update any event, regular Admin can only update their own
+    if (admin.role !== 'SuperAdmin' && event.admin_id !== adminId) {
+        throw new Error('Only the event admin or SuperAdmin can update this event');
     }
 
     // If venue_id is being updated, check if new venue exists
@@ -87,15 +104,17 @@ exports.updateEvent = async (eventId, updateData, adminId) => {
     return event;
 };
 
-// Delete event (Admin only - must be the event's admin)
+// Delete event (Admin only - must be the event's admin, or SuperAdmin)
 exports.deleteEvent = async (eventId, adminId) => {
     const event = await Event.findByPk(eventId);
     if (!event) {
         throw new Error('Event not found');
     }
 
-    if (event.admin_id !== adminId) {
-        throw new Error('Only the event admin can delete this event');
+    const admin = await User.findByPk(adminId);
+    // SuperAdmin can delete any event, regular Admin can only delete their own
+    if (admin.role !== 'SuperAdmin' && event.admin_id !== adminId) {
+        throw new Error('Only the event admin or SuperAdmin can delete this event');
     }
 
     await event.destroy();

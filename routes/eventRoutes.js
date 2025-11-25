@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
 const isAdmin = require('../middleware/isAdmin');
+const optionalAuth = require('../middleware/optionalAuth');
 const { uploadEventImages, handleUploadError } = require('../middleware/imageUpload');
 const { Ticket } = require('../models');
 
@@ -118,11 +119,18 @@ router.post('/', isAdmin, uploadEventImages, handleUploadError, eventController.
  * /api/events:
  *   get:
  *     summary: Get all events
+ *     description: |
+ *       Returns events filtered by user role:
+ *       - Admin: Only their own events
+ *       - SuperAdmin: All events
+ *       - Public/Attendee: All events
  *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200: { description: List of events }
  */
-router.get('/', eventController.getAllEvents);
+router.get('/', optionalAuth, eventController.getAllEvents);
 
 /**
  * @swagger
@@ -261,7 +269,7 @@ router.get('/upcoming', eventController.getRecentEvents);
  *       200: { description: Event found }
  *       404: { description: Event not found }
  */
-router.get('/:eventId', eventController.getEventById);
+router.get('/:eventId', optionalAuth, eventController.getEventById);
 
 /**
  * @swagger

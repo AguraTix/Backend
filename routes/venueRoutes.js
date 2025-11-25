@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const venueController = require('../controllers/venueController');
 const isAdmin = require('../middleware/isAdmin');
+const optionalAuth = require('../middleware/optionalAuth');
 
 /**
  * @swagger
@@ -47,12 +48,19 @@ router.post('/', isAdmin, venueController.createVenue);
  * /api/venues:
  *   get:
  *     summary: Get all venues
+ *     description: |
+ *       Returns venues filtered by user role:
+ *       - Admin: Only their own venues
+ *       - SuperAdmin: All venues
+ *       - Public/Attendee: All venues
  *     tags: [Venues]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200: { description: List of venues }
  *       500: { description: Server error }
  */
-router.get('/', venueController.getAllVenues);
+router.get('/', optionalAuth, venueController.getAllVenues);
 
 /**
  * @swagger
@@ -72,7 +80,7 @@ router.get('/', venueController.getAllVenues);
  *       404: { description: Venue not found }
  *       500: { description: Server error }
  */
-router.get('/:venueId', venueController.getVenueById);
+router.get('/:venueId', optionalAuth, venueController.getVenueById);
 
 /**
  * @swagger

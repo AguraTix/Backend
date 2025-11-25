@@ -235,7 +235,9 @@ async function generatePhysicalTickets(event, venue, ticketTypes) {
 // Get all events
 exports.getAllEvents = async (req, res) => {
     try {
-        const events = await eventService.getAllEvents();
+        const userId = req.user?.user_id;
+        const userRole = req.user?.role;
+        const events = await eventService.getAllEvents(userId, userRole);
         
         // Process events to ensure proper image URLs
         const processedEvents = events.map(event => {
@@ -321,7 +323,9 @@ exports.getRecentEvents = async (req, res) => {
 exports.getEventById = async (req, res) => {
     try {
         const { eventId } = req.params;
-        const event = await eventService.getEventById(eventId);
+        const userId = req.user?.user_id;
+        const userRole = req.user?.role;
+        const event = await eventService.getEventById(eventId, userId, userRole);
         
         // Process event to ensure proper image URLs
         const eventData = event.toJSON();

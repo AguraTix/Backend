@@ -12,12 +12,24 @@ module.exports = (sequelize) => {
         profile_photo: { type: DataTypes.STRING },
         role: {type: DataTypes.STRING,defaultValue: 'Attendee',allowNull: false,
              validate: {
-             isIn: [['Attendee', 'Admin']]
+             isIn: [['Attendee', 'Admin', 'SuperAdmin']]
             }
         },
         password: { 
             type: DataTypes.STRING, 
             allowNull: false
+        },
+        expires_at: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+        created_by: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: 'users',
+                key: 'user_id'
+            }
         },
         preferences: { type: DataTypes.JSON },
         verificationCode: { 
@@ -322,6 +334,10 @@ module.exports = (sequelize) => {
             }
         ]
     });
+
+    // Self-referencing association for User (SuperAdmin creates Admins)
+    User.hasMany(User, { foreignKey: 'created_by', as: 'CreatedAdmins' });
+    User.belongsTo(User, { foreignKey: 'created_by', as: 'Creator' });
 
     User.hasMany(Event, { foreignKey: 'admin_id' });
     Event.belongsTo(User, { foreignKey: 'admin_id', as: 'User' });

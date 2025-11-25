@@ -95,10 +95,23 @@ exports.getEventOrders = async (req, res) => {
   try {
     const { eventId } = req.params;
     const adminId = req.user?.user_id;
+    const userRole = req.user?.role;
     const { status } = req.query;
 
     if (!adminId) {
       return res.status(401).json({ error: 'Unauthorized: Admin access required' });
+    }
+
+    // Check if admin owns the event (or is SuperAdmin)
+    const { Event } = require('../models');
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const admin = await require('../models').User.findByPk(adminId);
+    if (admin.role !== 'SuperAdmin' && event.admin_id !== adminId) {
+      return res.status(403).json({ error: 'Access denied. You can only view orders for your own events.' });
     }
 
     const result = await FoodOrderService.getEventOrders(
@@ -138,12 +151,13 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-// Update order status (admin only)
+// Update order status (admin only - must own the food or be SuperAdmin)
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { newStatus } = req.body;
     const adminId = req.user?.user_id;
+    const userRole = req.user?.role;
 
     if (!adminId) {
       return res.status(401).json({ error: 'Unauthorized: Admin access required' });
@@ -158,11 +172,25 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ error: 'Invalid status. Must be one of: ' + validStatuses.join(', ') });
     }
 
-    const order = await FoodOrderService.updateOrderStatus(orderId, newStatus, adminId);
+    // Check if admin owns the food in the order (or is SuperAdmin)
+    const { FoodOrder, Food } = require('../models');
+    const order = await FoodOrder.findByPk(orderId, {
+      include: [{ model: Food, as: 'Food' }]
+    });
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const admin = await require('../models').User.findByPk(adminId);
+    if (admin.role !== 'SuperAdmin' && order.Food.admin_id !== adminId) {
+      return res.status(403).json({ error: 'Access denied. You can only update orders for your own foods.' });
+    }
+
+    const updatedOrder = await FoodOrderService.updateOrderStatus(orderId, newStatus, adminId);
 
     res.status(200).json({
       message: 'Order status updated successfully',
-      order
+      order: updatedOrder
     });
   } catch (error) {
     console.error('Error updating order status:', error);
@@ -192,7 +220,7 @@ exports.cancelOrder = async (req, res) => {
   }
 };
 
-// Get order statistics for an event (admin only)
+// Get order statistics for an event (admin only - must own the event or be SuperAdmin)
 exports.getEventOrderStats = async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -200,6 +228,18 @@ exports.getEventOrderStats = async (req, res) => {
 
     if (!adminId) {
       return res.status(401).json({ error: 'Unauthorized: Admin access required' });
+    }
+
+    // Check if admin owns the event (or is SuperAdmin)
+    const { Event } = require('../models');
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const admin = await require('../models').User.findByPk(adminId);
+    if (admin.role !== 'SuperAdmin' && event.admin_id !== adminId) {
+      return res.status(403).json({ error: 'Access denied. You can only view stats for your own events.' });
     }
 
     const stats = await FoodOrderService.getEventOrderStats(eventId, adminId);
@@ -219,6 +259,7 @@ exports.getEventOrderStats = async (req, res) => {
 exports.getAllOrders = async (req, res) => {
   try {
     const adminId = req.user?.user_id;
+    const userRole = req.user?.role;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const status = req.query.status;
@@ -234,14 +275,23 @@ exports.getAllOrders = async (req, res) => {
     if (status) whereClause.order_status = status;
     if (eventId) whereClause.event_id = eventId;
 
+    // Build food filter for admin ownership
+    let foodInclude = {
+      model: Food,
+      as: 'Food',
+      attributes: ['food_id', 'foodname', 'foodimage', 'foodprice']
+    };
+
+    // If user is Admin (not SuperAdmin), only show orders for their foods
+    if (userRole === 'Admin') {
+      foodInclude.where = { admin_id: adminId };
+    }
+    // SuperAdmin sees all orders (no filter)
+
     const { count, rows: orders } = await FoodOrder.findAndCountAll({
       where: whereClause,
       include: [
-        {
-          model: Food,
-          as: 'Food',
-          attributes: ['food_id', 'foodname', 'foodimage', 'foodprice']
-        },
+        foodInclude,
         {
           model: Event,
           as: 'Event',
