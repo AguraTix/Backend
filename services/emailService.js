@@ -10,7 +10,8 @@ function createTransport() {
     throw new Error('Email transport is not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
   }
 
-  const secure = port === 465; // true for 465, false for other ports like 587
+  // For Gmail on port 587 we must use STARTTLS, so secure must be false
+  const secure = false;
 
   return nodemailer.createTransport({
     host,
