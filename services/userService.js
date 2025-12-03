@@ -251,15 +251,15 @@ exports.login = async({ identifier, password }) => {
         throw new Error('Incorrect password. Please try again');
     }
 
-    if (user.role !== 'SuperAdmin' && !user.email_verified) {
-        // Attempt to resend verification email so the user can complete verification
-        try {
-            await emailVerificationService.sendVerificationEmail(user.email, user.name);
-        } catch (verificationError) {
-            console.error('Failed to resend verification email on login attempt:', verificationError.message);
-        }
-        throw new Error('Please verify your email before logging in. A new verification code has been sent to your inbox.');
-    }
+    // if (user.role !== 'SuperAdmin' && !user.email_verified) {
+    //     // Attempt to resend verification email so the user can complete verification
+    //     try {
+    //         await emailVerificationService.sendVerificationEmail(user.email, user.name);
+    //     } catch (verificationError) {
+    //         console.error('Failed to resend verification email on login attempt:', verificationError.message);
+    //     }
+    //     throw new Error('Please verify your email before logging in. A new verification code has been sent to your inbox.');
+    // }
 
     const token = jwt.sign({ user_id: user.user_id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     return {
