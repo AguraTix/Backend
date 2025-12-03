@@ -1,7 +1,88 @@
 const models = require('../models');
-const { Ticket, Event, Venue, User } = models;
+const { Ticket, Event, Venue, User, sequelize } = models;
 const { Op } = require('sequelize');
 const notificationService = require('../services/notificationService');
+
+const normalizeTypeName = (type) => {
+    if (type && typeof type === 'string' && type.trim() !== '') {
+        return type.trim();
+    }
+    return 'General Admission';
+};
+
+const buildTicketTypeSummary = (tickets = []) => {
+    const typeMap = new Map();
+
+    tickets.forEach(ticket => {
+        const type = normalizeTypeName(ticket.sectionName);
+
+        if (!typeMap.has(type)) {
+            typeMap.set(type, {
+                type,
+                available: 0,
+                minPrice: Number.POSITIVE_INFINITY,
+                maxPrice: Number.NEGATIVE_INFINITY
+            });
+        }
+
+        const entry = typeMap.get(type);
+        entry.available += 1;
+
+        if (typeof ticket.price === 'number') {
+            entry.minPrice = Math.min(entry.minPrice, ticket.price);
+            entry.maxPrice = Math.max(entry.maxPrice, ticket.price);
+        }
+    });
+
+    return Array.from(typeMap.values()).map(entry => ({
+        type: entry.type,
+        available: entry.available,
+        minPrice: Number.isFinite(entry.minPrice) ? entry.minPrice : null,
+        maxPrice: Number.isFinite(entry.maxPrice) ? entry.maxPrice : null
+    }));
+};
+
+const adjustEventTicketAvailability = async (eventId, sectionName, delta) => {
+    if (!eventId || typeof delta !== 'number' || delta === 0) {
+        return;
+    }
+
+    const event = await Event.findByPk(eventId);
+    if (!event || !Array.isArray(event.tickets) || event.tickets.length === 0) {
+        return;
+    }
+
+    const type = normalizeTypeName(sectionName);
+    let changed = false;
+
+    const updatedTickets = event.tickets.map(ticketType => {
+        if (!ticketType?.type) {
+            return ticketType;
+        }
+        const currentTypeName = normalizeTypeName(ticketType.type);
+        if (currentTypeName !== type) {
+            return ticketType;
+        }
+
+        const baseAvailable = typeof ticketType.availableTickets === 'number'
+            ? ticketType.availableTickets
+            : (typeof ticketType.available === 'number'
+                ? ticketType.available
+                : (typeof ticketType.quantity === 'number' ? ticketType.quantity : 0));
+        const nextAvailable = Math.max(0, baseAvailable + delta);
+        changed = changed || nextAvailable !== ticketType.availableTickets;
+        return {
+            ...ticketType,
+            available: nextAvailable,
+            availableTickets: nextAvailable
+        };
+    });
+
+    if (changed) {
+        event.tickets = updatedTickets;
+        await event.save({ fields: ['tickets'] });
+    }
+};
 
 class TicketController {
     constructor() {
@@ -20,37 +101,88 @@ class TicketController {
             }
 
             const tickets = await Ticket.findAll({
-                where: { eventId, status: 'available' }
+                where: { eventId, status: 'available' },
+                attributes: ['ticket_id', 'sectionName', 'price']
             });
 
-            let groupedTickets = [];
-            if (event.Venue.hasSections) {
-                const sections = {};
-                tickets.forEach(ticket => {
-                    if (!sections[ticket.sectionName]) {
-                        sections[ticket.sectionName] = [];
-                    }
-                    sections[ticket.sectionName].push(ticket);
-                });
-                groupedTickets = Object.entries(sections).map(([sectionName, sectionTickets]) => ({
-                    sectionName,
-                    available: sectionTickets.length,
-                    tickets: sectionTickets
-                }));
-            } else {
-                groupedTickets = [{
-                    sectionName: 'General Admission',
-                    available: tickets.length,
-                    tickets
-                }];
-            }
-
+            const ticketTypes = buildTicketTypeSummary(tickets);
             return res.status(200).json({
-                message: 'Available tickets retrieved successfully',
-                groupedTickets
+                message: 'Ticket availability retrieved successfully',
+                event: {
+                    event_id: event.event_id,
+                    title: event.title,
+                    date: event.date,
+                    venue: event.Venue ? {
+                        venue_id: event.Venue.venue_id,
+                        name: event.Venue.name,
+                        location: event.Venue.location,
+                        hasSections: event.Venue.hasSections
+                    } : null
+                },
+                totalAvailable: tickets.length,
+                ticketTypes
             });
         } catch (error) {
             console.error('Error fetching available tickets:', error);
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
+        }
+    }
+
+    async getAvailabilitySummary(req, res) {
+        try {
+            const events = await Event.findAll({
+                attributes: ['event_id', 'title', 'date', 'venue_id'],
+                include: [{ model: Venue, as: 'Venue', attributes: ['venue_id', 'name', 'location', 'hasSections'] }]
+            });
+
+            const availabilityIndex = events.reduce((acc, event) => {
+                acc[event.event_id] = {
+                    event: {
+                        event_id: event.event_id,
+                        title: event.title,
+                        date: event.date,
+                        venue: event.Venue ? {
+                            venue_id: event.Venue.venue_id,
+                            name: event.Venue.name,
+                            location: event.Venue.location,
+                            hasSections: event.Venue.hasSections
+                        } : null
+                    },
+                    totalAvailable: 0,
+                    ticketTypes: []
+                };
+                return acc;
+            }, {});
+
+            const availableTickets = await Ticket.findAll({
+                where: { status: 'available' },
+                attributes: ['eventId', 'sectionName', 'price']
+            });
+
+            const groupedByEvent = {};
+            availableTickets.forEach(ticket => {
+                if (!groupedByEvent[ticket.eventId]) {
+                    groupedByEvent[ticket.eventId] = [];
+                }
+                groupedByEvent[ticket.eventId].push(ticket);
+            });
+
+            Object.entries(groupedByEvent).forEach(([eventId, tickets]) => {
+                if (!availabilityIndex[eventId]) {
+                    return;
+                }
+                availabilityIndex[eventId].totalAvailable = tickets.length;
+                availabilityIndex[eventId].ticketTypes = buildTicketTypeSummary(tickets);
+            });
+
+            const eventsAvailability = Object.values(availabilityIndex).filter(summary => summary.totalAvailable > 0);
+
+            return res.status(200).json({
+                message: 'Available tickets per event retrieved successfully',
+                events: eventsAvailability
+            });
+        } catch (error) {
+            console.error('Error generating availability summary:', error);
             return res.status(500).json({ error: 'Internal server error', details: error.message });
         }
     }
@@ -75,6 +207,7 @@ class TicketController {
             ticket.attendee_id = attendee_id;
             ticket.status = 'sold';
             await ticket.save();
+            await adjustEventTicketAvailability(ticket.eventId, ticket.sectionName, -1);
 
             try {
                 const event = await Event.findByPk(ticket.eventId, {
@@ -119,6 +252,101 @@ class TicketController {
             });
         } catch (error) {
             console.error('Error booking ticket:', error);
+            return res.status(500).json({ error: 'Internal server error', details: error.message });
+        }
+    }
+
+    async purchaseTicket(req, res) {
+        const transaction = await sequelize.transaction();
+        try {
+            const attendee_id = req.user?.user_id;
+            const { eventId } = req.params;
+            const { ticketType } = req.body || {};
+
+            if (!attendee_id) {
+                await transaction.rollback();
+                return res.status(401).json({ error: 'Unauthorized: No user ID provided' });
+            }
+
+            if (!eventId) {
+                await transaction.rollback();
+                return res.status(400).json({ error: 'Event ID is required' });
+            }
+
+            const event = await Event.findByPk(eventId, {
+                include: [{ model: Venue, as: 'Venue' }, { model: User, as: 'User' }]
+            });
+
+            if (!event) {
+                await transaction.rollback();
+                return res.status(404).json({ error: 'Event not found' });
+            }
+
+            const trimmedType = ticketType && ticketType.trim() !== '' ? ticketType.trim() : null;
+            const whereClause = {
+                eventId,
+                status: 'available'
+            };
+            if (trimmedType) {
+                whereClause.sectionName = trimmedType;
+            }
+
+            const ticket = await Ticket.findOne({
+                where: whereClause,
+                order: [['price', 'ASC']],
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            if (!ticket) {
+                await transaction.rollback();
+                return res.status(404).json({ error: 'No available tickets for the selected type' });
+            }
+
+            ticket.attendee_id = attendee_id;
+            ticket.status = 'sold';
+            await ticket.save({ transaction });
+
+            await transaction.commit();
+            await adjustEventTicketAvailability(ticket.eventId, ticket.sectionName, -1);
+
+            try {
+                await notificationService.createNotification({
+                    user_id: attendee_id,
+                    type: 'TICKET_BOOKED',
+                    title: 'Ticket booked',
+                    message: `Your ticket for ${event.title} has been booked.`,
+                    data: { ticket_id: ticket.ticket_id, event_id: ticket.eventId, venue_id: ticket.venueId }
+                });
+
+                if (event.User && event.User.user_id) {
+                    await notificationService.createNotification({
+                        user_id: event.User.user_id,
+                        type: 'TICKET_BOOKED_FOR_EVENT',
+                        title: 'Ticket booked for your event',
+                        message: `A ticket was booked for your event ${event.title}.`,
+                        data: { ticket_id: ticket.ticket_id, event_id: ticket.eventId, attendee_id }
+                    });
+                }
+            } catch (notifyError) {
+                console.error('Failed to create ticket booking notifications:', notifyError);
+            }
+
+            return res.status(200).json({
+                message: 'Ticket purchased successfully',
+                ticket: {
+                    ticket_id: ticket.ticket_id,
+                    eventId: ticket.eventId,
+                    venueId: ticket.venueId,
+                    sectionName: ticket.sectionName || 'General Admission',
+                    price: ticket.price,
+                    status: ticket.status,
+                    qrCodeUrl: ticket.qrCodeUrl
+                }
+            });
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Error purchasing ticket:', error);
             return res.status(500).json({ error: 'Internal server error', details: error.message });
         }
     }
@@ -179,6 +407,7 @@ class TicketController {
             ticket.qrCode = null;
             ticket.purchaseDate = null;
             await ticket.save();
+            await adjustEventTicketAvailability(ticket.eventId, ticket.sectionName, 1);
 
             return res.status(200).json({
                 message: 'Ticket cancelled successfully'
