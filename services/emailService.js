@@ -25,7 +25,16 @@ async function sendEmail({ to, subject, html, text }) {
   const from = process.env.EMAIL_FROM || 'gloriantwari@gmail.com';
   const transporter = createTransport();
 
-  const info = await transporter.sendMail({ from, to, subject, html, text });
+
+ console.log("SENDING EMAIL")
+
+ try {
+   const info = await transporter.sendMail({ from, to, subject, html, text });
+   return info
+ } catch (error) {
+  console.log(error)
+   throw new Error(`Failed to send email: ${error.message}`);
+ }
   return info;
 }
 
