@@ -69,6 +69,82 @@ router.get('/statuses', authenticate, foodOrderController.getOrderStatuses);
  */
 router.post('/', authenticate, foodOrderController.createOrder);
 
+// Get all orders for the authenticated user
+/**
+ * @swagger
+ * /api/food-orders/my:
+ *   get:
+ *     summary: Get all food orders for the authenticated user
+ *     tags: [Food Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 orders:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/FoodOrder'
+ *                 count:
+ *                   type: integer
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/my', authenticate, foodOrderController.getUserOrders);
+
+// Get paginated order history for the authenticated user
+/**
+ * @swagger
+ * /api/food-orders/my/history:
+ *   get:
+ *     summary: Get paginated food order history for the authenticated user
+ *     tags: [Food Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: User order history with pagination
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 orders:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/FoodOrder'
+ *                 pagination:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/my/history', authenticate, foodOrderController.getUserOrderHistory);
+
 // Get order by ID
 /**
  * @swagger
