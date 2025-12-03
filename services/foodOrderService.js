@@ -175,6 +175,96 @@ class FoodOrderService {
   }
 
   /**
+   * Get all orders for a specific user (no pagination)
+   * @param {string} userId - ID of the user
+   * @returns {Promise<Array>} List of orders for the user
+   */
+  static async getUserOrders(userId) {
+    try {
+      getModels();
+
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      const orders = await FoodOrder.findAll({
+        where: { user_id: userId },
+        include: [
+          {
+            model: Food,
+            as: 'Food',
+            attributes: ['food_id', 'foodname', 'foodimage', 'foodprice']
+          },
+          {
+            model: Event,
+            as: 'Event',
+            attributes: ['event_id', 'title', 'date', 'venue_id']
+          }
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+
+      return orders;
+    } catch (error) {
+      console.error(`Error retrieving orders for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get paginated order history for a specific user
+   * @param {string} userId - ID of the user
+   * @param {number} page - Page number (1-based)
+   * @param {number} limit - Items per page
+   * @returns {Promise<Object>} Orders and pagination info
+   */
+  static async getUserOrderHistory(userId, page = 1, limit = 10) {
+    try {
+      getModels();
+
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+      const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+
+      const { count, rows } = await FoodOrder.findAndCountAll({
+        where: { user_id: userId },
+        include: [
+          {
+            model: Food,
+            as: 'Food',
+            attributes: ['food_id', 'foodname', 'foodimage', 'foodprice']
+          },
+          {
+            model: Event,
+            as: 'Event',
+            attributes: ['event_id', 'title', 'date', 'venue_id']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parsedLimit,
+        offset: (parsedPage - 1) * parsedLimit
+      });
+
+      return {
+        orders: rows,
+        pagination: {
+          currentPage: parsedPage,
+          totalPages: Math.ceil(count / parsedLimit),
+          totalOrders: count,
+          hasNextPage: parsedPage < Math.ceil(count / parsedLimit),
+          hasPrevPage: parsedPage > 1
+        }
+      };
+    } catch (error) {
+      console.error(`Error retrieving order history for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get orders by status with pagination
    * @param {string} status - Status to filter by
    * @param {number|null} userId - Optional user ID to filter by
