@@ -33,26 +33,68 @@ const { Ticket } = require('../models');
  *               type: object
  *               properties:
  *                 message: { type: string }
- *                 groupedTickets:
+ *                 totalAvailable: { type: integer }
+ *                 ticketTypes:
  *                   type: array
  *                   items:
  *                     type: object
  *                     properties:
- *                       sectionName: { type: string }
+ *                       type: { type: string }
  *                       available: { type: integer }
- *                       tickets:
- *                         type: array
- *                         items:
- *                           type: object
- *                           properties:
- *                             ticket_id: { type: string }
- *                             sectionName: { type: string }
- *                             seatNumber: { type: string }
- *                             price: { type: number }
+ *                       minPrice: { type: number, nullable: true }
+ *                       maxPrice: { type: number, nullable: true }
  *       404: { description: Event not found }
  *       500: { description: Internal server error }
  */
 router.get('/event/:eventId', ticketController.getAvailableTickets);
+
+/**
+ * @swagger
+ * /api/tickets/availability/summary:
+ *   get:
+ *     summary: Get total available tickets per event
+ *     tags: [Tickets]
+ *     responses:
+ *       200:
+ *         description: Events ticket availability
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       event:
+ *                         type: object
+ *                         properties:
+ *                           event_id: { type: string }
+ *                           title: { type: string }
+ *                           date: { type: string, format: date-time }
+ *                           venue:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               venue_id: { type: string }
+ *                               name: { type: string }
+ *                               location: { type: string }
+ *                               hasSections: { type: boolean }
+ *                       totalAvailable: { type: integer }
+ *                       ticketTypes:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             type: { type: string }
+ *                             available: { type: integer }
+ *                             minPrice: { type: number, nullable: true }
+ *                             maxPrice: { type: number, nullable: true }
+ *       500: { description: Internal server error }
+ */
+router.get('/availability/summary', ticketController.getAvailabilitySummary);
 
 /**
  * @swagger
@@ -95,6 +137,41 @@ router.get('/event/:eventId', ticketController.getAvailableTickets);
  *       500: { description: Internal server error }
  */
 router.post('/:ticketId/book', isAuthenticated, ticketController.bookTicket);
+
+/**
+ * @swagger
+ * /api/tickets/event/{eventId}/purchase:
+ *   post:
+ *     summary: Purchase a ticket for an event by ticket type
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The event ID to purchase a ticket for
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ticketType:
+ *                 type: string
+ *                 description: Section or type of ticket (defaults to General Admission)
+ *     responses:
+ *       200:
+ *         description: Ticket purchased successfully
+ *       400: { description: Invalid request }
+ *       401: { description: Unauthorized }
+ *       404: { description: Event or tickets not found }
+ *       500: { description: Internal server error }
+ */
+router.post('/event/:eventId/purchase', isAuthenticated, ticketController.purchaseTicket);
 
 /**
  * @swagger
