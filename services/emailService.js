@@ -14,9 +14,7 @@ function createTransport() {
   const secure = false;
 
   return nodemailer.createTransport({
-    host,
-    port,
-    secure,
+    service: "gmail",
     auth: { user, pass },
   });
 }
@@ -35,7 +33,6 @@ async function sendEmail({ to, subject, html, text }) {
   console.log(error)
    throw new Error(`Failed to send email: ${error.message}`);
  }
-  return info;
 }
 
 function buildPasswordResetHtml(code) {
