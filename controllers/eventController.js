@@ -29,13 +29,20 @@ async function uploadGallery(files, folder) {
 // Create a new event
 exports.createEvent = async (req, res) => {
   try {
-    const { title, description, date, venue_id, artist_lineup, tickets } = req.body;
+    const { title, description, date, end_date, venue_id, artist_lineup, tickets } = req.body;
     const eventImage = req.files?.event_image?.[0];
     const eventImages = req.files?.event_images || [];
 
     // Validate required fields
-    if (!title || !date || !venue_id) {
-      return res.status(400).json({ error: 'Title, date, and venue_id are required' });
+    if (!title || !date || !end_date || !venue_id) {
+      return res.status(400).json({ error: 'Title, date, end_date, and venue_id are required' });
+    }
+
+    // Validate that end_date is after the event date
+    const eventDate = new Date(date);
+    const eventEndDate = new Date(end_date);
+    if (eventEndDate <= eventDate) {
+      return res.status(400).json({ error: 'End date must be after the event start date' });
     }
 
     // Validate venue_id
@@ -183,6 +190,7 @@ exports.createEvent = async (req, res) => {
       title,
       description,
       date,
+      end_date,
       venue_id,
       admin_id: req.user.user_id,
       artist_lineup: parsedArtistLineup,
@@ -213,6 +221,7 @@ exports.createEvent = async (req, res) => {
       title: event.title,
       description: event.description,
       date: event.date,
+      end_date: event.end_date,
       venue_id: event.venue_id,
       artist_lineup: event.artist_lineup,
       event_images: event.event_images.map(img => ({
@@ -417,8 +426,27 @@ exports.getEventById = async (req, res) => {
 exports.updateEvent = async (req, res) => {
     try {
         const { eventId } = req.params;
-        const { title, description, date, venue_id, artist_lineup } = req.body;
+        const { title, description, date, end_date, venue_id, artist_lineup } = req.body;
         const adminId = req.user.user_id;
+
+        // Validate end_date if provided
+        if (end_date) {
+            const eventDate = date ? new Date(date) : null;
+            const eventEndDate = new Date(end_date);
+            
+            // If both date and end_date are provided, validate end_date is after date
+            if (eventDate && eventEndDate <= eventDate) {
+                return res.status(400).json({ error: 'End date must be after the event start date' });
+            }
+            
+            // If only end_date is provided, check against existing event date
+            if (!eventDate) {
+                const existingEvent = await Event.findByPk(eventId);
+                if (existingEvent && eventEndDate <= new Date(existingEvent.date)) {
+                    return res.status(400).json({ error: 'End date must be after the event start date' });
+                }
+            }
+        }
 
         // Handle main event image
         let uploadedMainImageUrl;
@@ -451,6 +479,10 @@ exports.updateEvent = async (req, res) => {
             date,
             venue_id,
         };
+
+        if (end_date !== undefined) {
+            updateData.end_date = end_date;
+        }
 
         if (parsedArtistLineup !== undefined) {
             updateData.artist_lineup = parsedArtistLineup;

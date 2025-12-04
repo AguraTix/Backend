@@ -39,6 +39,11 @@ const { Ticket } = require('../models');
  *                 format: date-time
  *                 description: Event date and time
  *                 example: 2025-08-06T21:00:00.000Z
+ *               end_date:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Event end date and time (must be after start date)
+ *                 example: 2025-08-07T02:00:00.000Z
  *               venue_id:
  *                 type: string
  *                 format: uuid
@@ -85,6 +90,7 @@ const { Ticket } = require('../models');
  *                     title: { type: string }
  *                     description: { type: string }
  *                     date: { type: string, format: date-time }
+ *                     end_date: { type: string, format: date-time }
  *                     venue_id: { type: string, format: uuid }
  *                     artist_lineup: { type: array, items: { type: string } }
  *                     event_images:
@@ -296,6 +302,7 @@ router.get('/:eventId', optionalAuth, eventController.getEventById);
  *               title: { type: string }
  *               description: { type: string }
  *               date: { type: string, format: date-time }
+ *               end_date: { type: string, format: date-time, description: "Event end date and time (must be after start date)" }
  *               venue_id: { type: string }
  *               artist_lineup: { type: string, description: "JSON string or comma-separated values" }
  *               event_image: { type: string, format: binary, description: "Main event image (optional, max 5MB)" }
