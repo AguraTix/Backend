@@ -195,13 +195,24 @@ class TicketController {
                 return res.status(401).json({ error: 'Unauthorized: No user ID provided' });
             }
 
-            const ticket = await Ticket.findByPk(ticketId);
+            const ticket = await Ticket.findByPk(ticketId, {
+                include: [{ model: Event, as: 'Event' }]
+            });
             if (!ticket) {
                 return res.status(404).json({ error: 'Ticket not found' });
             }
 
             if (ticket.status !== 'available') {
                 return res.status(400).json({ error: 'Ticket is not available' });
+            }
+
+            // Check if event end date has passed
+            if (ticket.Event && ticket.Event.end_date) {
+                const endDate = new Date(ticket.Event.end_date);
+                const now = new Date();
+                if (endDate < now) {
+                    return res.status(400).json({ error: 'Ticket purchasing is no longer available. The event end date has passed.' });
+                }
             }
 
             ticket.attendee_id = attendee_id;
@@ -280,6 +291,16 @@ class TicketController {
             if (!event) {
                 await transaction.rollback();
                 return res.status(404).json({ error: 'Event not found' });
+            }
+
+            // Check if event end date has passed
+            if (event.end_date) {
+                const endDate = new Date(event.end_date);
+                const now = new Date();
+                if (endDate < now) {
+                    await transaction.rollback();
+                    return res.status(400).json({ error: 'Ticket purchasing is no longer available. The event end date has passed.' });
+                }
             }
 
             const trimmedType = ticketType && ticketType.trim() !== '' ? ticketType.trim() : null;

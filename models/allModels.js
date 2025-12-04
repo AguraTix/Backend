@@ -58,6 +58,7 @@ module.exports = (sequelize) => {
     title: { type: DataTypes.STRING, allowNull: false },
     description: { type: DataTypes.TEXT },
     date: { type: DataTypes.DATE, allowNull: false },
+    end_date: { type: DataTypes.DATE, allowNull: false },
     venue_id: { type: DataTypes.UUID, allowNull: false },
     admin_id: { type: DataTypes.UUID, allowNull: false },
     artist_lineup: { type: DataTypes.JSON },
@@ -376,7 +377,7 @@ module.exports = (sequelize) => {
 
 
     Event.hasMany(Ticket, { foreignKey: 'eventId' });
-    Ticket.belongsTo(Event, { foreignKey: 'eventId' });
+    Ticket.belongsTo(Event, { foreignKey: 'eventId', as: 'Event' });
 
     Venue.hasMany(Ticket, { foreignKey: 'venueId' });
     Ticket.belongsTo(Venue, { foreignKey: 'venueId' });
