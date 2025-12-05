@@ -58,11 +58,12 @@ const { Ticket } = require('../models');
  *                 description: |
  *                   JSON string of ticket array, e.g.:
  *                   [
- *                     {"type": "Regular", "price": 50, "quantity": 100},
- *                     {"type": "VIP", "price": 100, "quantity": 50},
- *                     {"type": "VVIP", "price": 150, "quantity": 25}
+ *                     {"type": "Regular", "price": 50, "isFree": false, "quantity": 100},
+ *                     {"type": "VIP", "price": 100, "isFree": false, "quantity": 50},
+ *                     {"type": "VVIP", "isFree": true, "quantity": 25}
  *                   ]
- *                 example: '[{"type": "Regular", "price": 50, "quantity": 100}, {"type": "VIP", "price": 100, "quantity": 50}, {"type": "VVIP", "price": 150, "quantity": 25}]'
+ *                   Note: Each ticket type can have an isFree option. If isFree is true, price will be automatically set to 0 (price can be omitted). If isFree is false or not provided, price must be a positive number.
+ *                 example: '[{"type": "Regular", "price": 50, "isFree": false, "quantity": 100}, {"type": "VIP", "price": 100, "isFree": false, "quantity": 50}, {"type": "VVIP", "isFree": true, "quantity": 25}]'
  *               event_image:
  *                 type: string
  *                 format: binary
@@ -109,9 +110,10 @@ const { Ticket } = require('../models');
  *                       items:
  *                         type: object
  *                         properties:
- *                           type: { type: string, enum: ['Regular', 'VIP', 'VVIP'] }
- *                           price: { type: number }
- *                           quantity: { type: integer }
+ *                           type: { type: string, description: "Ticket type name (e.g., 'Regular', 'VIP', 'VVIP')" }
+ *                           price: { type: number, description: "Price for this ticket type (automatically set to 0 if isFree is true)" }
+ *                           isFree: { type: boolean, description: "Whether this ticket type is free. If true, price will be set to 0" }
+ *                           quantity: { type: integer, description: "Number of tickets available for this type" }
  *                     ticketsCreated: { type: integer }
  *       400:
  *         description: Invalid input

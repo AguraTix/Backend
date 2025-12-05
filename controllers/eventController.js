@@ -90,7 +90,7 @@ exports.createEvent = async (req, res) => {
     }
 
     parsedTickets = parsedTickets.map(ticket => {
-      const price = Number(ticket.price);
+      const isFree = ticket.isFree === true || ticket.isFree === 'true';
       const quantity = Number.isInteger(ticket.quantity) ? ticket.quantity : parseInt(ticket.quantity, 10);
       const safeQuantity = Number.isInteger(quantity) && quantity > 0 ? quantity : 0;
 
@@ -100,9 +100,14 @@ exports.createEvent = async (req, res) => {
 
       const safeAvailable = Math.min(Math.max(rawAvailable, 0), safeQuantity);
 
+      // If isFree is true, set price to 0 (ignore any provided price)
+      // If isFree is false/undefined, use the provided price (will be validated later)
+      const finalPrice = isFree ? 0 : (Number.isFinite(Number(ticket.price)) ? Number(ticket.price) : 0);
+
       return {
         type: ticket.type?.trim(),
-        price: Number.isFinite(price) ? price : 0,
+        price: finalPrice,
+        isFree: isFree,
         quantity: safeQuantity,
         available: safeAvailable,
         availableTickets: safeAvailable
@@ -141,8 +146,15 @@ exports.createEvent = async (req, res) => {
             error: `Ticket quantity (${ticket.quantity}) for ${ticket.type} exceeds section capacity (${correspondingSection.capacity})` 
           });
         }
-        if (typeof ticket.price !== 'number' || ticket.price < 0) {
-          return res.status(400).json({ error: 'Ticket price must be a non-negative number' });
+        // Validate price: if isFree is true, price must be 0; if isFree is false/undefined, price must be positive
+        if (ticket.isFree === true) {
+          if (ticket.price !== 0) {
+            return res.status(400).json({ error: `Free ticket (${ticket.type}) must have price of 0` });
+          }
+        } else {
+          if (typeof ticket.price !== 'number' || ticket.price <= 0) {
+            return res.status(400).json({ error: `Ticket price for ${ticket.type} must be a positive number (or set isFree to true for free tickets)` });
+          }
         }
         if (typeof ticket.quantity !== 'number' || ticket.quantity < 0 || !Number.isInteger(ticket.quantity)) {
           return res.status(400).json({ error: 'Ticket quantity must be a non-negative integer' });
@@ -154,8 +166,15 @@ exports.createEvent = async (req, res) => {
         if (!ticket.type) {
           return res.status(400).json({ error: 'Each ticket must include a type name' });
         }
-        if (typeof ticket.price !== 'number' || ticket.price < 0) {
-          return res.status(400).json({ error: 'Ticket price must be a non-negative number' });
+        // Validate price: if isFree is true, price must be 0; if isFree is false/undefined, price must be positive
+        if (ticket.isFree === true) {
+          if (ticket.price !== 0) {
+            return res.status(400).json({ error: `Free ticket (${ticket.type}) must have price of 0` });
+          }
+        } else {
+          if (typeof ticket.price !== 'number' || ticket.price <= 0) {
+            return res.status(400).json({ error: `Ticket price for ${ticket.type} must be a positive number (or set isFree to true for free tickets)` });
+          }
         }
         if (typeof ticket.quantity !== 'number' || ticket.quantity < 0 || !Number.isInteger(ticket.quantity)) {
           return res.status(400).json({ error: 'Ticket quantity must be a non-negative integer' });
